@@ -61,10 +61,10 @@ Write the returned content to `agent-state/DRAFT_PLAN.md`.
 
 **STOP HERE.** Present the plan from `agent-state/DRAFT_PLAN.md` to the user. Iterate on feedback until the user explicitly approves (e.g., "approved", "looks good", "go ahead").
 
-- If feedback is minor: incorporate it and write `agent-state/PLAN.md` yourself (copy DRAFT_PLAN.md content + adjustments).
+- If feedback is minor: incorporate it and write `agent-state/PLAN.md` yourself.
 - If feedback requires significant re-exploration: re-run the Phase 1a subagent with the feedback appended to the prompt, then present the revised plan.
 
-Once approved, write `agent-state/PLAN.md` with the final plan including a note about any user feedback incorporated.
+Once approved, write `agent-state/PLAN.md`. **Important**: Start by reading `agent-state/DRAFT_PLAN.md` in full and preserve ALL sections (including Risks & Edge Cases, Acceptance Criteria Mapping, etc.). Apply user feedback as targeted edits — do not rewrite from scratch. Add a note at the top about approval and any feedback incorporated.
 
 ### Step 4b — Gather Code Standards (Orchestrator)
 

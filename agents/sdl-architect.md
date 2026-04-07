@@ -25,7 +25,17 @@ These are your baseline understanding. Use file-system exploration in Step 2 onl
 - E2E test setup (or lack thereof)
 - Linting & static analysis tools
 
-## Step 3 — Draft a plan covering
+## Step 3 — Analyze existing state against acceptance criteria
+
+Before planning new work, check which ACs are **already satisfied** by the current codebase. For each AC in the ticket:
+
+1. Search the code for relevant implementations (UI fields, API endpoints, business logic, tests)
+2. Determine if the AC is: **already done**, **partially done**, or **not started**
+3. Note the evidence (file paths, line numbers) for anything already implemented
+
+This narrows the plan to only what actually needs to change. Include the full AC status table in your output under the Implementation Plan section.
+
+## Step 4 — Draft a plan covering
 
 1. Scope of changes — which layers/areas are affected
 2. Detailed steps — specific files to create/modify with file paths
@@ -49,4 +59,4 @@ Return your full output in two clearly labeled sections (the orchestrator will w
 - **Test patterns**: assertion library, mock library, setup/teardown patterns (with example file paths)
 - **DB migration pattern**: how schema changes are applied
 
-**## Implementation Plan** — the full plan from Step 3 above
+**## Implementation Plan** — the full plan from Steps 3–4 above

@@ -15,6 +15,7 @@ This is a Claude Code plugin (`joshreep-tools`) that packages reusable slash com
   - `ticket/` — Azure DevOps work item fetcher and summarizer
   - `code-review-assistant/` — branch-comparison code review
   - `demo-plan/` — sprint demo plan generator from ADO board columns
+  - `sdl-retro/` — retrospective analysis of SDL pipeline runs
 - `agents/` — reusable agent definitions (markdown with YAML frontmatter)
   - `sdl-ticket-fetcher.md` — Phase 0: ADO work item fetching
   - `sdl-architect.md` — Phase 1a: project discovery and plan drafting

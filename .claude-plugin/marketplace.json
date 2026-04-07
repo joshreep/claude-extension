@@ -8,7 +8,7 @@
       "name": "joshreep-tools",
       "source": "./",
       "description": "Azure DevOps workflow tools, PR management, SDL pipeline, code review, and sprint demo planning",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "author": {
         "name": "Josh Reep"
       }
