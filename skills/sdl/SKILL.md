@@ -114,6 +114,9 @@ Launch `joshreep-tools:sdl-e2e-tester` with prompt:
 **After the subagent completes (Orchestrator):**
 
 Read `agent-state/E2E_REPORT.md`:
+- If **SERVERS_NOT_RUNNING** → **USER CHECKPOINT (MANDATORY)**: Present the server status and startup commands from the report. Tell the user to start the required servers, then ask: "Type 'ready' when servers are running to retry E2E tests, or 'skip' to proceed without E2E validation." WAIT for response.
+  - If user responds 'ready': re-run the `joshreep-tools:sdl-e2e-tester` subagent with the same prompt
+  - If user responds 'skip': note "E2E tests skipped (servers not started)" and proceed to Step 7
 - If **NO_FRAMEWORK_EXISTS** → **USER CHECKPOINT (MANDATORY)**: Present the recommendation. If user approves, launch a subagent to install the framework and write/run tests. If declined, note "skipped" and continue.
 - If **regressions caused by implementation** → append regression details to `agent-state/IMPL_REVIEW.md` and go back to Step 5 (Phase 2 re-work).
 - If **environment-related failures** (browser not installed, network) → note in report and continue.
@@ -128,7 +131,7 @@ Launch `joshreep-tools:sdl-auditor` with prompt:
 
 ### Step 8 — Phase 5b: Final Checkpoint (Orchestrator — USER CHECKPOINT)
 
-Read `agent-state/AUDIT.md`.
+Read `agent-state/AUDIT.md` and `agent-state/PR_TEMPLATE.md`.
 
-- If **APPROVED**: **STOP HERE.** Present the audit summary to the user. Summarize the full pipeline: what was built, how many review rounds, test results, and the recommended PR description. Offer to create a PR via `/pr`. WAIT for user response.
+- If **APPROVED**: **STOP HERE.** Present the audit summary to the user. Summarize the full pipeline: what was built, how many review rounds, test results. Reference the PR description from `PR_TEMPLATE.md`. Offer to create a PR via `/pr` (which will use the PR_TEMPLATE.md content). WAIT for user response.
 - If **REJECTED**: **STOP HERE.** Identify which phase needs revisiting and explain why. Ask the user whether to (a) restart from the identified phase, (b) take over manually, or (c) force approve despite issues. WAIT for response.
