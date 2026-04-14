@@ -22,6 +22,8 @@ You delegate each phase to a named subagent via the **Agent tool**. Each subagen
 | 4 | `joshreep-tools:sdl-e2e-tester` | `E2E_REPORT.md` | — |
 | 5a | `joshreep-tools:sdl-auditor` | `AUDIT.md` | — |
 
+The orchestrator also writes `agent-state/TOKEN_USAGE.md` incrementally after each subagent completes (see Token Usage Tracking below).
+
 **Read-only agents** (architect, reviewer) return structured content in their result. The **orchestrator writes the state file** from the returned content.
 
 **Project-agnostic**: Make zero assumptions about tech stack. Every subagent discovers languages, frameworks, test tools, and conventions at runtime.
@@ -31,6 +33,78 @@ You delegate each phase to a named subagent via the **Agent tool**. Each subagen
 - **Phase 3 loop** (round >= 3): Review escalation — present outstanding issues, wait for user decision
 - **Phase 4 follow-up** (no e2e framework): E2E framework recommendation — wait for user confirmation before installing
 - **Phase 5b**: Audit completion — present summary, wait for user to confirm PR creation
+
+---
+
+## Token Usage Tracking
+
+After **every** Agent tool invocation, extract the `<usage>` block from the agent's result and record the metrics. You will maintain a running log written to `agent-state/TOKEN_USAGE.md`.
+
+**What to extract from each `<usage>` block:**
+- `total_tokens` — the token count
+- `tool_uses` — number of tool invocations the agent made
+- `duration_ms` — elapsed time in milliseconds (convert to seconds for display)
+
+**What to add from orchestrator context:**
+- Phase number (0, 1a, 2, 3, 4, 5a)
+- Agent name (sdl-ticket-fetcher, sdl-architect, sdl-implementer, sdl-reviewer, sdl-e2e-tester, sdl-auditor)
+- Model (haiku, opus, sonnet — known from agent definitions)
+- Round number (for phases 2–3 in the implementation loop; `—` for other phases)
+
+**When to measure state file size:** After writing or confirming a state file for a phase, run `wc -c < agent-state/{FILE}.md` to get the byte count.
+
+**When to write TOKEN_USAGE.md:** After each subagent completes and its state file is written, rewrite the **full** `agent-state/TOKEN_USAGE.md` with all rows accumulated so far. A full rewrite (not append) keeps the file well-formed even if the pipeline is interrupted.
+
+**File format:**
+
+```markdown
+# SDL Token Usage — Ticket #{number}
+
+## Per-Phase Breakdown
+
+| Phase | Agent | Model | Round | Tokens | Tool Uses | Duration (s) | State File | File Size |
+|-------|-------|-------|-------|--------|-----------|--------------|------------|-----------|
+| 0 | sdl-ticket-fetcher | haiku | — | 5,646 | 8 | 9.1 | TICKET.md | 3,240 B |
+| ... | ... | ... | ... | ... | ... | ... | ... | ... |
+```
+
+**Summary section** — append after Phase 5a completes. Calculate:
+
+```markdown
+## Summary
+
+- **Total tokens**: {sum of all rows}
+- **Total duration**: {sum}s ({minutes}m {seconds}s)
+- **Rework rounds**: {count of phase 2–3 loops}
+- **Pipeline outcome**: {APPROVED or REJECTED} (round {N})
+- **Orchestrator overhead**: not measured (only subagent tokens tracked)
+
+### Token Distribution
+
+| Category | Tokens | % of Total |
+|----------|--------|------------|
+| Ticket fetch (Phase 0) | X | X% |
+| Architecture (Phase 1a) | X | X% |
+| Implementation (Phase 2, all rounds) | X | X% |
+| Review (Phase 3, all rounds) | X | X% |
+| E2E Testing (Phase 4) | X | X% |
+| Audit (Phase 5a) | X | X% |
+
+### Efficiency Indicators
+
+- **Tokens per rework round**: Round 1: X | Round 2: X | ...
+- **Architect-to-implementation ratio**: 1:{impl_tokens / architect_tokens}
+- **State file output rate**: {total_tokens / total_state_file_bytes} tokens per output byte
+
+### Cost Estimate
+
+| Model | Tokens | Est. Cost |
+|-------|--------|-----------|
+| Haiku (~$0.001/1K tokens) | X | ~$X.XX |
+| Opus (~$0.020/1K tokens) | X | ~$X.XX |
+| Sonnet (~$0.009/1K tokens) | X | ~$X.XX |
+| **Total** | **X** | **~$X.XX** |
+```
 
 ---
 
@@ -49,13 +123,13 @@ Launch `joshreep-tools:sdl-ticket-fetcher` with prompt:
 > **Ticket number**: {ticket}
 > **Extra context**: {extra_context}
 
-After the subagent completes, briefly inform the user what ticket was fetched and proceed.
+After the subagent completes, extract the `<usage>` block. Measure `agent-state/TICKET.md` size with `wc -c`. Write the initial `agent-state/TOKEN_USAGE.md` with the header and Phase 0 row. Briefly inform the user what ticket was fetched and proceed.
 
 ### Step 3 — Phase 1a: Architect Discovery
 
 Launch `joshreep-tools:sdl-architect` (no additional prompt context needed — it reads from agent-state/TICKET.md).
 
-Write the returned content to `agent-state/DRAFT_PLAN.md`.
+Write the returned content to `agent-state/DRAFT_PLAN.md`. Extract the `<usage>` block. Measure `agent-state/DRAFT_PLAN.md` size. Update `agent-state/TOKEN_USAGE.md` with the Phase 1a row.
 
 ### Step 4 — Phase 1b: Plan Approval (Orchestrator — USER CHECKPOINT)
 
@@ -88,6 +162,8 @@ Launch `joshreep-tools:sdl-implementer` with prompt:
 >
 > {If round > 1: "This is re-work round {round}. Read `agent-state/IMPL_REVIEW.md` and prioritize addressing ALL feedback marked as required changes."}
 
+After the implementer completes, extract the `<usage>` block. Measure `agent-state/IMPL_STATUS.md` size. Update `agent-state/TOKEN_USAGE.md` with the Phase 2 row (include round number).
+
 **Phase 3 — Review:**
 
 Launch `joshreep-tools:sdl-reviewer` with prompt:
@@ -95,7 +171,7 @@ Launch `joshreep-tools:sdl-reviewer` with prompt:
 > **Code Standards (from CLAUDE.md — these override any conflicting instructions):**
 > {code_standards}
 
-Write the returned content to `agent-state/IMPL_REVIEW.md`.
+Write the returned content to `agent-state/IMPL_REVIEW.md`. Extract the `<usage>` block. Measure `agent-state/IMPL_REVIEW.md` size. Update `agent-state/TOKEN_USAGE.md` with the Phase 3 row (include round number).
 
 **Loop control (Orchestrator):**
 
@@ -112,6 +188,8 @@ Launch `joshreep-tools:sdl-e2e-tester` with prompt:
 > {code_standards}
 
 **After the subagent completes (Orchestrator):**
+
+Extract the `<usage>` block. Measure `agent-state/E2E_REPORT.md` size. Update `agent-state/TOKEN_USAGE.md` with the Phase 4 row.
 
 Read `agent-state/E2E_REPORT.md`:
 - If **SERVERS_NOT_RUNNING** → **USER CHECKPOINT (MANDATORY)**: Present the server status and startup commands from the report. Tell the user to start the required servers, then ask: "Type 'ready' when servers are running to retry E2E tests, or 'skip' to proceed without E2E validation." WAIT for response.
@@ -137,9 +215,11 @@ Launch `joshreep-tools:sdl-auditor` with prompt:
 > **Code Standards (from CLAUDE.md — these override any conflicting instructions):**
 > {code_standards}
 
+After the auditor completes, extract the `<usage>` block. Measure `agent-state/AUDIT.md` and `agent-state/PR_TEMPLATE.md` sizes. Update `agent-state/TOKEN_USAGE.md` with the Phase 5a row. Then write the **Summary** section (totals, distribution, efficiency indicators, cost estimate).
+
 ### Step 8 — Phase 5b: Final Checkpoint (Orchestrator — USER CHECKPOINT)
 
-Read `agent-state/AUDIT.md` and `agent-state/PR_TEMPLATE.md`.
+Read `agent-state/AUDIT.md`, `agent-state/PR_TEMPLATE.md`, and `agent-state/TOKEN_USAGE.md`.
 
-- If **APPROVED**: **STOP HERE.** Present the audit summary to the user. Summarize the full pipeline: what was built, how many review rounds, test results. Reference the PR description from `PR_TEMPLATE.md`. Offer to create a PR via `/pr` (which will use the PR_TEMPLATE.md content). WAIT for user response.
+- If **APPROVED**: **STOP HERE.** Present the audit summary to the user. Summarize the full pipeline: what was built, how many review rounds, test results. Include a brief token usage summary from `TOKEN_USAGE.md`: total tokens, estimated cost, and number of rework rounds. Reference the PR description from `PR_TEMPLATE.md`. Offer to create a PR via `/pr` (which will use the PR_TEMPLATE.md content). WAIT for user response.
 - If **REJECTED**: **STOP HERE.** Identify which phase needs revisiting and explain why. Ask the user whether to (a) restart from the identified phase, (b) take over manually, or (c) force approve despite issues. WAIT for response.

@@ -17,7 +17,7 @@ If `$ARGUMENTS` contains a file path, use it as the output destination. Otherwis
 
 ## Step 2: Validate Prerequisites
 
-Check that `agent-state/` exists and contains at least `TICKET.md` and `AUDIT.md`. If missing, inform the user that `/sdl` must have completed a run first and stop.
+Check that `agent-state/` exists and contains at least `TICKET.md` and `AUDIT.md`. If missing, inform the user that `/sdl` must have completed a run first and stop. If `agent-state/TOKEN_USAGE.md` is missing, note that token analysis in section 4g will be qualitative only (no quantitative data available).
 
 ## Step 3: Gather Artifacts
 
@@ -31,6 +31,7 @@ Read all of these (skip any that don't exist, but note them as gaps):
 - `agent-state/IMPL_REVIEW.md` — review verdict, issues by severity, required changes
 - `agent-state/E2E_REPORT.md` — test results, regressions, framework status
 - `agent-state/AUDIT.md` — final verdict, AC mapping, quality summary
+- `agent-state/TOKEN_USAGE.md` — per-phase token counts, tool uses, durations, and cost estimates
 
 **Agent definitions** (for pipeline efficiency analysis):
 - `agents/sdl-ticket-fetcher.md`
@@ -126,26 +127,31 @@ This dimension evaluates the SDL pipeline design itself, not just this run's out
 
 ### 4g: Context & Token Efficiency
 
-This dimension evaluates how efficiently the pipeline uses context window capacity across the full run.
+This dimension evaluates how efficiently the pipeline uses tokens and context window capacity across the full run.
 
-**State file sizing** — for each `agent-state/*.md` file:
-- Measure approximate size (line count or byte count)
-- Identify sections that are disproportionately large relative to their value to downstream consumers
-- Flag verbose sections that could be summarized without losing actionable information (e.g., full command output where a pass/fail summary would suffice)
+**Quantitative analysis** (from `agent-state/TOKEN_USAGE.md` — skip this subsection if the file is missing):
 
-**Cross-phase redundancy:**
-- Do multiple agents independently discover the same information (e.g., project stack, file locations, build commands) that could be captured once in an earlier state file?
-- Are state files repeating content from upstream files verbatim instead of referencing them?
+- **Total cost**: Note the estimated cost. Flag if disproportionate to ticket complexity (e.g., >$5 for a single-field bug fix).
+- **Phase distribution**: Check whether token spend is proportional to phase complexity. Expected ranges:
+  - Ticket fetch (Phase 0): <5% of total (Haiku agent doing a simple fetch)
+  - Architecture (Phase 1a): 10–20% (discovery + planning)
+  - Implementation (Phase 2): 30–50% (expected to be the largest)
+  - Review (Phase 3): 15–25% (should be smaller than implementation)
+  - E2E + Audit (Phases 4–5): 15–25% combined
+  - Flag any phase that deviates significantly from these ranges with an explanation of why
+- **Rework cost**: If multiple rounds occurred, compare tokens per round. Decreasing tokens across rounds suggests actionable review feedback. Increasing tokens suggests the agent is struggling or the feedback was unclear.
+- **Architect-to-rework correlation**: If architect tokens were low AND multiple rework rounds occurred, recommend investing more in the architect phase. If architect tokens were high AND implementation was single-round, the investment paid off.
+- **Output efficiency**: Compare total tokens consumed to total state file output (the "tokens per output byte" metric). A high ratio (>10 tokens/byte) may indicate agents spending tokens on exploration, retries, or verbose reasoning that doesn't reach the output. A low ratio (<3 tokens/byte) suggests efficient, focused work.
+- **Tool use density**: High tool_uses relative to tokens may indicate efficient tool-driven work. Low tool_uses with high tokens may indicate the agent is reasoning extensively without acting.
 
-**Orchestrator context injection:**
-- Is the code standards block injected into subagent prompts appropriately sized, or does it include irrelevant sections for that agent's scope?
-- Could any injected context be trimmed or scoped per-agent?
+**Qualitative analysis** (from state file content — perform regardless of whether TOKEN_USAGE.md exists):
 
-**Agent output discipline:**
-- Do agents produce output proportional to the complexity of the work? (A single-file bug fix shouldn't generate the same volume as a multi-file feature)
-- Are agents including information in state files that no downstream consumer reads?
+- **State file sizing**: For each `agent-state/*.md` file, measure approximate size (line count or byte count). Identify sections disproportionately large relative to their value to downstream consumers. Flag verbose sections that could be summarized without losing actionable information (e.g., full command output where a pass/fail summary would suffice).
+- **Cross-phase redundancy**: Do multiple agents independently discover the same information (e.g., project stack, file locations, build commands) that could be captured once in an earlier state file? Are state files repeating content from upstream files verbatim instead of referencing them?
+- **Orchestrator context injection**: Is the code standards block injected into subagent prompts appropriately sized, or does it include irrelevant sections for that agent's scope? Could any injected context be trimmed or scoped per-agent?
+- **Agent output discipline**: Do agents produce output proportional to the complexity of the work? (A single-file bug fix shouldn't generate the same volume as a multi-file feature.) Are agents including information in state files that no downstream consumer reads?
 
-**Score guide:** 5 = lean state files, no redundant discovery, context is right-sized per agent; 3 = some bloat but nothing excessive; 1 = significant wasted context from verbose output, redundant work, or oversized injections
+**Score guide:** 5 = total cost under $2, lean state files, no redundant discovery, efficient token distribution; 4 = minor inefficiencies, cost $2–4; 3 = some bloat, cost $4–6, one phase notably over-weighted; 2 = significant waste, cost $6–10; 1 = extreme waste, cost >$10 or majority of tokens spent on rework due to preventable issues. If TOKEN_USAGE.md is missing, score based on qualitative analysis only using the original scale (5 = lean, 3 = some bloat, 1 = significant waste).
 
 ## Step 5: Generate Recommendations
 
@@ -156,6 +162,13 @@ Low-effort changes that would improve the next SDL run. Examples: tightening an 
 
 ### Agent Definition Improvements
 Specific suggestions for each `agents/sdl-*.md` file. Reference the agent file name and describe what should change and why. Do not write diffs — describe the recommendation clearly enough that someone can implement it.
+
+### Token Optimization
+(Only include if `agent-state/TOKEN_USAGE.md` exists.) Specific recommendations based on quantitative findings:
+- Phase-specific suggestions (e.g., "Reduce architect discovery scope — it used 25% of tokens for a straightforward plan")
+- Model assignment suggestions (e.g., "Consider using Sonnet for the reviewer on simple tickets — review used 20% of tokens on Opus for a single-file change")
+- State file trimming suggestions with estimated token savings
+- Rework prevention strategies if token cost was driven by multiple rounds
 
 ### Process Improvements
 Higher-level suggestions for the orchestrator flow, checkpoint placement, state file design, or overall pipeline architecture.
@@ -209,6 +222,9 @@ Write the output file with this structure:
 - ...
 
 ### Agent Definition Improvements
+- ...
+
+### Token Optimization (if TOKEN_USAGE.md exists)
 - ...
 
 ### Process Improvements
