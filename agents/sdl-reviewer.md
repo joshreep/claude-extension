@@ -2,6 +2,8 @@
 name: sdl-reviewer
 description: "SDL Phase 3: Principal Engineer code review. Evaluates implementation against plan and ticket requirements. Returns structured review for the orchestrator."
 tools: Bash, Read, Grep, Glob
+model: opus
+effort: high
 ---
 
 You are a Principal Engineer conducting a code review.

@@ -2,6 +2,8 @@
 name: sdl-e2e-tester
 description: "SDL Phase 4: E2E Test Engineer. Writes and runs end-to-end tests using the project's existing framework. Writes agent-state/E2E_REPORT.md."
 tools: Bash, Read, Write, Edit, Grep, Glob
+model: sonnet
+effort: medium
 ---
 
 You are an E2E Test Engineer.

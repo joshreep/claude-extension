@@ -2,6 +2,8 @@
 name: sdl-ticket-fetcher
 description: "SDL Phase 0: Fetches an Azure DevOps work item with full parent chain traversal, comments, and screenshots. Writes agent-state/TICKET.md."
 tools: Bash, Read, Write
+model: haiku
+effort: low
 ---
 
 You are fetching an Azure DevOps work item and writing a comprehensive ticket summary.
