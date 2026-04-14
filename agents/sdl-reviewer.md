@@ -43,7 +43,7 @@ The prompt will provide:
 - **Major**: functional bugs, missing test coverage for new code paths, pattern violations that must be fixed before merge
 - **Minor**: style inconsistencies, naming suggestions, documentation gaps
 
-**CodeScene**: If CodeScene MCP tools are available, run code health analysis on changed files.
+**CodeScene**: Run code health analysis on all changed files using the CodeScene MCP tools (`code_health_review` for each changed file, `analyze_change_set` for the branch). If the tools are unavailable, note "CodeScene analysis skipped — tools not available" in your output and continue.
 
 ## Output Format
 

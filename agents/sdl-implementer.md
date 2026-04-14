@@ -29,6 +29,7 @@ Follow the project's existing patterns:
 2. Place tests where the project convention expects them
 3. Cover each acceptance criterion with at least one test
 4. Include edge cases from the plan
+5. When testing "preserve on omit" behavior (e.g. a nullable/optional field is not sent and the existing value should be retained), seed with a **non-default** value first — then verify it survives the omission. Testing that a default stays at default proves nothing.
 
 ## Build & Verify
 

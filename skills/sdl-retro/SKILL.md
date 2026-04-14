@@ -1,6 +1,6 @@
 ---
 name: sdl-retro
-description: Retrospective analysis of an SDL pipeline run. Evaluates code quality, context efficiency, and pipeline effectiveness.
+description: Retrospective analysis of an SDL pipeline run. Evaluates code quality, token/context efficiency, and pipeline effectiveness.
 user-invocable: true
 allowed-tools: Bash, Read, Grep, Glob, Write
 argument-hint: "[output-file]"
@@ -124,6 +124,29 @@ This dimension evaluates the SDL pipeline design itself, not just this run's out
 
 **Score guide:** 5 = pipeline is well-designed with clear agent boundaries; 3 = some agents need refinement; 1 = significant structural issues
 
+### 4g: Context & Token Efficiency
+
+This dimension evaluates how efficiently the pipeline uses context window capacity across the full run.
+
+**State file sizing** — for each `agent-state/*.md` file:
+- Measure approximate size (line count or byte count)
+- Identify sections that are disproportionately large relative to their value to downstream consumers
+- Flag verbose sections that could be summarized without losing actionable information (e.g., full command output where a pass/fail summary would suffice)
+
+**Cross-phase redundancy:**
+- Do multiple agents independently discover the same information (e.g., project stack, file locations, build commands) that could be captured once in an earlier state file?
+- Are state files repeating content from upstream files verbatim instead of referencing them?
+
+**Orchestrator context injection:**
+- Is the code standards block injected into subagent prompts appropriately sized, or does it include irrelevant sections for that agent's scope?
+- Could any injected context be trimmed or scoped per-agent?
+
+**Agent output discipline:**
+- Do agents produce output proportional to the complexity of the work? (A single-file bug fix shouldn't generate the same volume as a multi-file feature)
+- Are agents including information in state files that no downstream consumer reads?
+
+**Score guide:** 5 = lean state files, no redundant discovery, context is right-sized per agent; 3 = some bloat but nothing excessive; 1 = significant wasted context from verbose output, redundant work, or oversized injections
+
 ## Step 5: Generate Recommendations
 
 Organize findings into three categories, prioritized by impact:
@@ -154,6 +177,7 @@ Write the output file with this structure:
 | Code Quality | X | one-line summary |
 | Test Coverage | X | one-line summary |
 | Pipeline Efficiency | X | one-line summary |
+| Context & Token Efficiency | X | one-line summary |
 | **Overall** | **X.X** | one-line summary |
 
 ## Detailed Findings
@@ -174,6 +198,9 @@ Write the output file with this structure:
 {evidence-backed analysis}
 
 ### Pipeline Efficiency
+{evidence-backed analysis}
+
+### Context & Token Efficiency
 {evidence-backed analysis}
 
 ## Recommendations

@@ -122,6 +122,14 @@ Read `agent-state/E2E_REPORT.md`:
 - If **environment-related failures** (browser not installed, network) → note in report and continue.
 - Otherwise → proceed to Step 7.
 
+### Step 6b — Commit New Files (Orchestrator)
+
+After the E2E subagent completes (and before the audit), check for untracked files created during Phases 2–4 (implementation and E2E tests). If any exist, stage and commit them so they are included in the final audit and PR:
+
+1. Run `git status` to check for untracked files outside `agent-state/`.
+2. If new files exist (e.g. new test specs), stage them with `git add <files>` and commit: `git commit -m "chore: add files from SDL pipeline (tests, specs)"`.
+3. If there are no new untracked files, skip this step.
+
 ### Step 7 — Phase 5a: Audit
 
 Launch `joshreep-tools:sdl-auditor` with prompt:
