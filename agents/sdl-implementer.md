@@ -17,6 +17,8 @@ The prompt will provide:
 1. Read `agent-state/PLAN.md` (including the Project Stack section) for the implementation plan and build/test commands.
 2. Read `agent-state/TICKET.md` for the full requirements, acceptance criteria, reproduction steps, and tester comments. Use this alongside the plan for judgment calls about implementation details.
 
+If the prompt includes a **Project Profile** section (from `.claude/sdl-project.md`), use its build/test/lint commands directly — these are pre-validated project commands.
+
 ## Implement
 
 1. Read all relevant files before modifying — never modify code you haven't read

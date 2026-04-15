@@ -12,6 +12,7 @@ This is a Claude Code plugin (`joshreep-tools`) that packages reusable slash com
 - `skills/` — each subdirectory contains a `SKILL.md` with YAML frontmatter and markdown instructions
   - `pr/` — pull request creation and feedback retrieval (GitHub + Azure DevOps)
   - `sdl/` — multi-agent SDL pipeline orchestrator (delegates to agents below)
+  - `sdl-init/` — project stack discovery and caching for SDL pipeline acceleration
   - `ticket/` — Azure DevOps work item fetcher and summarizer
   - `code-review-assistant/` — branch-comparison code review
   - `demo-plan/` — sprint demo plan generator from ADO board columns

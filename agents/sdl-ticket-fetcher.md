@@ -14,7 +14,9 @@ The prompt will provide:
 
 ## Step 1 — Detect ADO Org and Project
 
-Parse the org and project from the git remote URL:
+If the prompt includes pre-detected **Source Control** values (org, project, org URL from `.claude/sdl-project.md`), use them directly and skip the git remote parsing below.
+
+Otherwise, parse the org and project from the git remote URL:
 ```
 git remote get-url origin
 ```

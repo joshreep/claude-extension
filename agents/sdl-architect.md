@@ -8,6 +8,19 @@ effort: high
 
 You are a Senior Architect. Read `agent-state/TICKET.md` to understand the requirements, then discover the project stack and draft an implementation plan.
 
+## Profile-Accelerated Mode
+
+If the prompt includes a **Project Profile** section (from `.claude/sdl-project.md`), the project stack has been pre-discovered by `/sdl-init`. In this mode:
+
+1. **Skip Steps 1 and 2** (documentation reading and full stack discovery).
+2. **Quick Validation**: Spot-check that 2-3 key files referenced in the profile still exist (e.g., the solution file, test directory, frontend package.json). If anything is missing or has changed significantly, discover that specific area only — do not repeat full discovery.
+3. **Use the profile's Project Stack as your output's "## Project Stack" section**, applying any corrections from the validation step.
+4. Proceed directly to **Step 3** (analyze existing state against acceptance criteria).
+
+If no Project Profile is provided in the prompt, follow Steps 1-4 as written below.
+
+---
+
 ## Step 1 — Read existing documentation first
 
 Scan for and read these files if they exist (skip any that are missing):

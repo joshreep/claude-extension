@@ -26,7 +26,7 @@ The orchestrator also writes `agent-state/TOKEN_USAGE.md` incrementally after ea
 
 **Read-only agents** (architect, reviewer) return structured content in their result. The **orchestrator writes the state file** from the returned content.
 
-**Project-agnostic**: Make zero assumptions about tech stack. Every subagent discovers languages, frameworks, test tools, and conventions at runtime.
+**Project-agnostic**: Make zero assumptions about tech stack. If `.claude/sdl-project.md` exists (from `/sdl-init`), use it as the baseline. Otherwise, subagents discover at runtime.
 
 **CRITICAL — USER CHECKPOINTS ARE MANDATORY**: The following checkpoints require explicit user approval before proceeding. You (the orchestrator) MUST stop and wait for user input at each one. Do NOT skip, combine, or auto-approve any checkpoint. Subagents CANNOT interact with the user — only you can.
 - **Phase 1b**: Architect plan approval — present the plan, iterate on feedback, wait for explicit approval
@@ -118,16 +118,38 @@ Extract from `$ARGUMENTS`:
 
 ### Step 2 — Phase 0: Ticket Acquisition
 
+First, check if `.claude/sdl-project.md` exists and read its **Source Control** section (if present) to pre-detect ADO org/project/URL.
+
 Launch `joshreep-tools:sdl-ticket-fetcher` with prompt:
 
 > **Ticket number**: {ticket}
 > **Extra context**: {extra_context}
+>
+> {If Source Control was found in `.claude/sdl-project.md`, include:}
+> **Source Control (pre-detected from `.claude/sdl-project.md`):**
+> - ADO org: {org}
+> - ADO project: {project}
+> - ADO org URL: {url}
+> Use these values instead of parsing git remote.
 
 After the subagent completes, extract the `<usage>` block. Measure `agent-state/TICKET.md` size with `wc -c`. Write the initial `agent-state/TOKEN_USAGE.md` with the header and Phase 0 row. Briefly inform the user what ticket was fetched and proceed.
 
+### Step 2.5 — Read Project Profile (Orchestrator)
+
+Check if `.claude/sdl-project.md` exists. If it does:
+1. Read the file and store its content as `project_profile`.
+2. Briefly inform the user: "Using cached project profile from `.claude/sdl-project.md`."
+
+If it does not exist, set `project_profile` to empty and continue. The pipeline works with or without a profile.
+
 ### Step 3 — Phase 1a: Architect Discovery
 
-Launch `joshreep-tools:sdl-architect` (no additional prompt context needed — it reads from agent-state/TICKET.md).
+If `project_profile` is **not empty**, launch `joshreep-tools:sdl-architect` with prompt:
+
+> **Project Profile (from `.claude/sdl-project.md` — pre-discovered, skip Steps 1-2 and validate only):**
+> {project_profile}
+
+If `project_profile` is **empty**, launch `joshreep-tools:sdl-architect` with no additional prompt context (it reads from agent-state/TICKET.md).
 
 Write the returned content to `agent-state/DRAFT_PLAN.md`. Extract the `<usage>` block. Measure `agent-state/DRAFT_PLAN.md` size. Update `agent-state/TOKEN_USAGE.md` with the Phase 1a row.
 
@@ -140,7 +162,7 @@ Write the returned content to `agent-state/DRAFT_PLAN.md`. Extract the `<usage>`
 
 Once approved, write `agent-state/PLAN.md`. **Important**: Start by reading `agent-state/DRAFT_PLAN.md` in full and preserve ALL sections (including Risks & Edge Cases, Acceptance Criteria Mapping, etc.). Apply user feedback as targeted edits — do not rewrite from scratch. Add a note at the top about approval and any feedback incorporated.
 
-### Step 4b — Gather Code Standards (Orchestrator)
+### Step 4b — Gather Code Standards and Project Profile (Orchestrator)
 
 Before launching any implementation or review subagent, read the CLAUDE.md files so you can inject them into subagent prompts (subagents run in isolated contexts and do NOT inherit these rules):
 
@@ -148,6 +170,19 @@ Before launching any implementation or review subagent, read the CLAUDE.md files
 2. Read `.claude/CLAUDE.md` in the project root if it exists (project-level standards)
 
 Store the combined content. You will embed it in the `prompt` for every subsequent subagent invocation as the **Code Standards** block.
+
+**Project Profile injection**: If `project_profile` was loaded in Step 2.5, also include the relevant sections in each downstream subagent's prompt alongside Code Standards:
+- **Implementer** (Phase 2): Include the full **Project Stack** section (build/test/lint commands, test conventions)
+- **Reviewer** (Phase 3): Include the **Project Stack** section (build/test commands for verification)
+- **E2E Tester** (Phase 4): Include the **Project Stack** and **Dev Servers** sections (E2E command, server URLs, startup commands)
+- **Auditor** (Phase 5a): Include the **Project Stack** section (build/test commands for final verification)
+
+Format the injection as:
+
+> **Project Profile (from `.claude/sdl-project.md`):**
+> {relevant sections}
+
+This gives each agent immediate access to build/test commands and project conventions without additional file I/O.
 
 ### Step 5 — Implementation & Review Loop
 

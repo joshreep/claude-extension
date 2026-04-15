@@ -15,6 +15,8 @@ The prompt will provide:
 
 Read the Project Stack section from `agent-state/PLAN.md` to identify the e2e framework. Read `agent-state/TICKET.md` for user-facing scenarios.
 
+If the prompt includes a **Project Profile** section (from `.claude/sdl-project.md`), use its Dev Servers URLs and E2E command directly instead of inferring them from PLAN.md or conventions.
+
 ## Pre-flight Check: Application Servers
 
 **Before writing any tests**, verify that the application servers are running:
