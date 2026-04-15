@@ -197,6 +197,8 @@ Launch `joshreep-tools:sdl-implementer` with prompt:
 >
 > {If round > 1: "This is re-work round {round}. Read `agent-state/IMPL_REVIEW.md` and prioritize addressing ALL feedback marked as required changes."}
 
+**Model optimization**: If the approved plan has 3 or fewer implementation steps and touches 5 or fewer files, pass `model: "sonnet"` to the Agent tool call for the implementer. The agent definition defaults to Opus, but simple mechanical changes (nullable fixes, single-field additions, pattern-following edits) don't require Opus-level reasoning. The TOKEN_USAGE.md data from future runs will validate this heuristic.
+
 After the implementer completes, extract the `<usage>` block. Measure `agent-state/IMPL_STATUS.md` size. Update `agent-state/TOKEN_USAGE.md` with the Phase 2 row (include round number).
 
 **Phase 3 — Review:**
@@ -230,9 +232,16 @@ Read `agent-state/E2E_REPORT.md`:
 - If **SERVERS_NOT_RUNNING** → **USER CHECKPOINT (MANDATORY)**: Present the server status and startup commands from the report. Tell the user to start the required servers, then ask: "Type 'ready' when servers are running to retry E2E tests, or 'skip' to proceed without E2E validation." WAIT for response.
   - If user responds 'ready': re-run the `joshreep-tools:sdl-e2e-tester` subagent with the same prompt
   - If user responds 'skip': note "E2E tests skipped (servers not started)" and proceed to Step 7
+- If **STALE_SERVER** → **USER CHECKPOINT (MANDATORY)**: The E2E agent detected a backend running from a different worktree. Present the stale server details (PID, stale path, current worktree, rebuild commands) and ask:
+  - **(a) "I'll handle it"** — user will kill the process and restart manually. Tell user to type 'ready' when done, then re-run the E2E phase.
+  - **(b) "Fix it for me"** — kill the stale process (`kill <PID>`), rebuild the backend from the current worktree using build commands from PLAN.md, start the server, wait for it to be healthy, then re-run the E2E phase automatically.
+  - **(c) "Skip E2E"** — note "E2E tests skipped (stale server)" and proceed to Step 7.
+  WAIT for response.
 - If **NO_FRAMEWORK_EXISTS** → **USER CHECKPOINT (MANDATORY)**: Present the recommendation. If user approves, launch a subagent to install the framework and write/run tests. If declined, note "skipped" and continue.
 - If **regressions caused by implementation** → append regression details to `agent-state/IMPL_REVIEW.md` and go back to Step 5 (Phase 2 re-work).
-- If **environment-related failures** (browser not installed, network) → note in report and continue.
+- If **test failures >= 50% of total tests** → **USER CHECKPOINT**: present the failures grouped by root cause. Ask whether to (a) retry E2E phase with guidance to fix, (b) skip E2E and proceed, or (c) provide specific instructions. WAIT for response.
+- If **infrastructure failures only** (browser not installed, no display server, DNS resolution) → note in report and continue. These cannot be fixed by the pipeline.
+- If **1-2 flaky failures with a passing majority** → note as potential flakes in report and continue.
 - Otherwise → proceed to Step 7.
 
 ### Step 6b — Commit New Files (Orchestrator)

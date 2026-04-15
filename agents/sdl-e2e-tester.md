@@ -39,7 +39,20 @@ If the prompt includes a **Project Profile** section (from `.claude/sdl-project.
    - Return: `"E2E tests blocked: application servers not running. Backend: [status], Frontend: [status]. User intervention required."`
    - The orchestrator will prompt the user to start servers and re-run this phase
 
-4. **If both servers respond**: Proceed with test creation.
+4. **If both servers respond**: Proceed to the Code Freshness Check.
+
+## Code Freshness Check
+
+After confirming servers are reachable, verify the backend is running code from the **current working directory** (not a stale process from a previous worktree):
+
+1. Identify the backend process: use `lsof -ti:<backend_port>` to find the PID listening on the backend port.
+2. Check the process's working directory: use `lsof -p <PID> | grep cwd` (macOS) or `readlink /proc/<PID>/cwd` (Linux).
+3. **If the process is running from a different directory** than the current worktree:
+   - Write `agent-state/E2E_REPORT.md` with status: `STALE_SERVER`
+   - Include: which server is stale, PID, its working directory vs current worktree path, rebuild/restart commands
+   - Return: `"E2E tests blocked: backend server (PID {pid}) is running from {stale_path}, not the current worktree {cwd}. Code may be stale. User intervention required."`
+   - The orchestrator will prompt the user with options to handle it
+4. If the process is from the current directory, proceed with test creation.
 
 ## If e2e tests exist in the project
 
@@ -47,6 +60,19 @@ If the prompt includes a **Project Profile** section (from `.claude/sdl-project.
 2. Write new e2e tests following established conventions covering the ticket's scenarios
 3. Run tests using the project's existing e2e command
 4. Document any regressions
+
+## Test Data Strategy
+
+When tests need specific data conditions (feature flags, entity states, conditional UI):
+
+1. **Prefer route interception** (`page.route()` in Playwright, `cy.intercept()` in Cypress) to inject or modify API responses. This makes tests independent of environment data and avoids:
+   - Hardcoded entity IDs that may not exist in the test environment
+   - Side effects from mutating real data via PATCH/PUT
+   - Test pollution across parallel runs
+
+2. **Never hardcode entity IDs** (e.g., `/record/1/...`). If a real entity is needed, search for it via an API list endpoint or create it in a `beforeAll` hook with cleanup in `afterAll`.
+
+3. **For conditional UI behavior** (field visibility, validation rules based on flags): intercept the API response that provides the flag and modify it. Write separate tests for each flag state using different intercept payloads.
 
 ## If no e2e framework exists
 
