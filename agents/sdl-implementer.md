@@ -41,6 +41,14 @@ Follow the project's existing patterns:
 - Run lint/static analysis. Fix new warnings (ignore pre-existing ones in untouched files).
 - Run test suite. Fix failures.
 
+## Commit Changes
+
+After all changes pass build and tests, **you must commit**:
+
+1. Stage your changes with `git add <files>` (specific files, not `-A`)
+2. Commit with a descriptive message referencing the ticket number
+3. Run `git status` and confirm a clean working tree — if uncommitted changes remain, the round is not complete
+
 ## Output
 
 Write `agent-state/IMPL_STATUS.md` with:
