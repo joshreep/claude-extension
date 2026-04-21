@@ -17,6 +17,41 @@ Read the Project Stack section from `agent-state/PLAN.md` to identify the e2e fr
 
 If the prompt includes a **Project Profile** section (from `.claude/sdl-project.md`), use its Dev Servers URLs and E2E command directly instead of inferring them from PLAN.md or conventions.
 
+## Change Scope Pre-Check
+
+**Before any server checks or test writing**, determine whether the changes require E2E testing:
+
+1. Get the diff file list:
+   ```bash
+   MERGE_BASE=$(git merge-base HEAD $(git rev-parse --abbrev-ref '@{upstream}' 2>/dev/null | sed 's|origin/||' || echo develop))
+   git diff $MERGE_BASE..HEAD --name-only
+   ```
+
+2. Classify each changed file. If **every** file matches one of these non-application categories, E2E tests are not applicable:
+
+   | Category | File patterns |
+   |----------|--------------|
+   | Infrastructure / CI-CD | `*.yml`, `*.yaml` (pipeline files), `*.bicep`, `*.tf`, `Dockerfile`, `docker-compose*`, `infra/**` |
+   | Documentation | `*.md`, `*.txt`, `*.rst`, `docs/**`, `wiki/**` |
+   | Config / Environment | `appsettings*.json`, `.env*`, `launchSettings.json` |
+   | Test-only | Files matching the project's test naming convention (e.g. `*.spec.ts`, `*Test.cs`, `*_test.go`, `test_*.py`) with NO changes to the source files they test |
+   | Build metadata | `.editorconfig`, `.gitignore`, `.prettierrc`, `tsconfig*.json`, `angular.json` |
+
+   **Do NOT skip** for: dependency changes (`*.csproj`, `*.sln`, `package.json`, lock files), source code, templates, or stylesheets — these can cause runtime regressions.
+
+3. **If all files are non-application**: Write a brief `agent-state/E2E_REPORT.md`:
+   ```
+   ## E2E Report
+
+   **Status**: NOT_APPLICABLE
+   **Reason**: All changed files are non-application ({category list}). No UI or API behavior was modified.
+   **Files changed**: {file list}
+   **Recommendation**: No E2E tests needed. Verify through deployment validation.
+   ```
+   Return immediately — skip all subsequent sections.
+
+4. **If any application or dependency file was changed**: Proceed to the Pre-flight Check below.
+
 ## Pre-flight Check: Application Servers
 
 **Before writing any tests**, verify that the application servers are running:

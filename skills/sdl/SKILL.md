@@ -229,6 +229,7 @@ Launch `joshreep-tools:sdl-e2e-tester` with prompt:
 Extract the `<usage>` block. Measure `agent-state/E2E_REPORT.md` size. Update `agent-state/TOKEN_USAGE.md` with the Phase 4 row.
 
 Read `agent-state/E2E_REPORT.md`:
+- If **NOT_APPLICABLE** (non-application changes only) → note "E2E tests not applicable (non-application changes)" and proceed to Step 7.
 - If **SERVERS_NOT_RUNNING** → **USER CHECKPOINT (MANDATORY)**: Present the server status and startup commands from the report. Tell the user to start the required servers, then ask: "Type 'ready' when servers are running to retry E2E tests, or 'skip' to proceed without E2E validation." WAIT for response.
   - If user responds 'ready': re-run the `joshreep-tools:sdl-e2e-tester` subagent with the same prompt
   - If user responds 'skip': note "E2E tests skipped (servers not started)" and proceed to Step 7

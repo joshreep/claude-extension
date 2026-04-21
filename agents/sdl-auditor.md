@@ -42,6 +42,16 @@ Run the full build and test commands one last time.
 
 Write **two separate files**:
 
+### Cross-Phase Redundancy Rules
+
+Upstream state files (TICKET.md, PLAN.md, IMPL_STATUS.md, IMPL_REVIEW.md, E2E_REPORT.md) already contain detailed information. **Do not restate** content that exists upstream:
+- **Root cause analysis**: reference PLAN.md rather than re-explaining
+- **Build/test output**: report pass/fail with counts only — do not reproduce command output already in IMPL_STATUS.md
+- **Deployment CLI commands**: omit if already documented in PLAN.md or IMPL_STATUS.md — reference the file instead
+- **Verification steps**: write only steps **not already covered** in upstream files; for others, write "See IMPL_STATUS.md § Post-Deployment Verification" or similar
+
+The goal is that each state file adds **new information**, not restated information.
+
 ### 1. `agent-state/AUDIT.md` — Internal Quality Report
 
 Focus on verdict and quality assessment (~150 lines max):
@@ -49,19 +59,19 @@ Focus on verdict and quality assessment (~150 lines max):
 - **Acceptance Criteria Table**: each AC mapped to evidence (file:line, test name)
 - **Quality Summary**: code health, test coverage, security notes
 - **Issues Found** (if any) — organize by severity
-- **Deployment Readiness**: pre-deployment checklist, rollback plan
+- **Deployment Readiness**: pre-deployment checklist, rollback plan — reference upstream files for details already documented there
 
 ### 2. `agent-state/PR_TEMPLATE.md` — Ready-to-Use PR Description
 
 User-facing PR description with no internal audit details:
 - **Summary**: what changed and why (1-2 paragraphs)
-- **Root Cause** (if bug fix): what was wrong
-- **Solution**: how it was fixed
-- **Changes Made**: organized by backend/frontend/tests
+- **Root Cause** (if bug fix): what was wrong — keep to 2-3 sentences
+- **Solution**: how it was fixed — keep to 2-3 sentences
+- **Changes Made**: organized by backend/frontend/tests — one bullet per file with a short description, not a line-by-line changelog
 - **Fields/Features Affected**: bulleted list
 - **Acceptance Criteria**: checkboxes showing what was met
-- **Manual Testing**: checklist for QA validation
-- **Deployment Notes**: schema changes, backward compatibility, rollback notes
+- **Manual Testing**: checklist for QA validation — focus on **what to verify**, not CLI commands (reviewers can find those in the code)
+- **Deployment Notes**: schema changes, backward compatibility, rollback notes — keep brief
 
 Do NOT include:
 - Round numbers or review history
