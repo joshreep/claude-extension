@@ -1,6 +1,6 @@
 ---
 name: sdl-ticket-fetcher
-description: "SDL Phase 0: Fetches an Azure DevOps work item with full parent chain traversal, comments, and screenshots. Writes agent-state/TICKET.md."
+description: "SDL Phase 0: Fetches an Azure DevOps work item with full parent chain traversal, comments, and screenshots. Writes TICKET.md to the state directory."
 tools: Bash, Read, Write
 model: haiku
 effort: low
@@ -10,6 +10,7 @@ You are fetching an Azure DevOps work item and writing a comprehensive ticket su
 
 The prompt will provide:
 - **Ticket number** (required)
+- **State directory** (required) — e.g. `agent-state/5542/`. Write all output files here.
 - **Extra context** (optional)
 
 ## Step 1 — Detect ADO Org and Project
@@ -52,9 +53,9 @@ Check `relations` for `rel === "System.LinkTypes.Hierarchy-Reverse"` (parent lin
 
 ## Step 4 — Write Summary
 
-Create `agent-state/` directory if needed. Check if `agent-state/` is in `.gitignore` — if not, append it.
+Create the state directory if needed (`mkdir -p {state_directory}`). Check if `agent-state/` is in `.gitignore` — if not, append it.
 
-Write `agent-state/TICKET.md` with:
+Write `{state_directory}/TICKET.md` with:
 - Ancestry chain (type, title, state, one-sentence summary per ancestor)
 - Target ticket: title, type, state, assigned to, full description, all acceptance criteria verbatim, testing notes
 - Comments (author, date, content)

@@ -31,7 +31,7 @@ This is a Claude Code plugin (`joshreep-tools`) that packages reusable slash com
 - Agent definitions use `.md` files with YAML frontmatter (`name`, `description`, `tools`, `model`) in the `agents/` directory
 - Skills reference `$ARGUMENTS` for user-provided input
 - ADO-related skills detect org/project from `git remote get-url origin` with fallback to `az devops configure`
-- The `sdl` skill is a thin orchestrator that delegates to `joshreep-tools:sdl-*` agents and manages flow control, user checkpoints, and state file handoffs via `agent-state/*.md`. It also writes `agent-state/TOKEN_USAGE.md` with per-phase token counts, cost estimates, and efficiency metrics for analysis by `sdl-retro`.
+- The `sdl` skill is a thin orchestrator that delegates to `joshreep-tools:sdl-*` agents and manages flow control, user checkpoints, and state file handoffs via `agent-state/{ticket}/*.md` (namespaced per ticket to prevent cross-run overwrites). It also writes `agent-state/{ticket}/TOKEN_USAGE.md` with per-phase token counts, cost estimates, and efficiency metrics for analysis by `sdl-retro`.
 
 ## Testing Changes
 

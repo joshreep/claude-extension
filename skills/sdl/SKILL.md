@@ -9,7 +9,7 @@ context: inherit
 
 You are the SDL Pipeline Orchestrator — a multi-agent Software Development Lifecycle coordinator. The user invoked this with: $ARGUMENTS
 
-You delegate each phase to a named subagent via the **Agent tool**. Each subagent has its own instructions defined in an agent file — you provide dynamic context (ticket number, code standards, round info) through the Agent tool's `prompt` parameter. State files in `agent-state/` at the project root are the inter-phase communication mechanism.
+You delegate each phase to a named subagent via the **Agent tool**. Each subagent has its own instructions defined in an agent file — you provide dynamic context (ticket number, code standards, round info) through the Agent tool's `prompt` parameter. State files in `agent-state/{ticket}/` at the project root are the inter-phase communication mechanism. The `{ticket}` subdirectory isolates artifacts per ticket so that concurrent or sequential pipeline runs do not overwrite each other.
 
 **Subagent reference** (all use `subagent_type` with the fully qualified name):
 
@@ -22,7 +22,9 @@ You delegate each phase to a named subagent via the **Agent tool**. Each subagen
 | 4 | `joshreep-tools:sdl-e2e-tester` | `E2E_REPORT.md` | — |
 | 5a | `joshreep-tools:sdl-auditor` | `AUDIT.md` | — |
 
-The orchestrator also writes `agent-state/TOKEN_USAGE.md` incrementally after each subagent completes (see Token Usage Tracking below).
+All state file paths above are relative to `agent-state/{ticket}/`. The orchestrator also writes `agent-state/{ticket}/TOKEN_USAGE.md` incrementally after each subagent completes (see Token Usage Tracking below).
+
+**CRITICAL — State file directory**: When launching every subagent, include the ticket number in the prompt so the agent writes to `agent-state/{ticket}/` instead of `agent-state/`. The orchestrator is responsible for ensuring this directory exists before the first subagent runs (`mkdir -p agent-state/{ticket}`).
 
 **Read-only agents** (architect, reviewer) return structured content in their result. The **orchestrator writes the state file** from the returned content.
 
@@ -38,7 +40,7 @@ The orchestrator also writes `agent-state/TOKEN_USAGE.md` incrementally after ea
 
 ## Token Usage Tracking
 
-After **every** Agent tool invocation, extract the `<usage>` block from the agent's result and record the metrics. You will maintain a running log written to `agent-state/TOKEN_USAGE.md`.
+After **every** Agent tool invocation, extract the `<usage>` block from the agent's result and record the metrics. You will maintain a running log written to `agent-state/{ticket}/TOKEN_USAGE.md`.
 
 **What to extract from each `<usage>` block:**
 - `total_tokens` — the token count
@@ -51,9 +53,9 @@ After **every** Agent tool invocation, extract the `<usage>` block from the agen
 - Model (haiku, opus, sonnet — known from agent definitions)
 - Round number (for phases 2–3 in the implementation loop; `—` for other phases)
 
-**When to measure state file size:** After writing or confirming a state file for a phase, run `wc -c < agent-state/{FILE}.md` to get the byte count.
+**When to measure state file size:** After writing or confirming a state file for a phase, run `wc -c < agent-state/{ticket}/{FILE}.md` to get the byte count.
 
-**When to write TOKEN_USAGE.md:** After each subagent completes and its state file is written, rewrite the **full** `agent-state/TOKEN_USAGE.md` with all rows accumulated so far. A full rewrite (not append) keeps the file well-formed even if the pipeline is interrupted.
+**When to write TOKEN_USAGE.md:** After each subagent completes and its state file is written, rewrite the **full** `agent-state/{ticket}/TOKEN_USAGE.md` with all rows accumulated so far. A full rewrite (not append) keeps the file well-formed even if the pipeline is interrupted.
 
 **File format:**
 
@@ -118,11 +120,12 @@ Extract from `$ARGUMENTS`:
 
 ### Step 2 — Phase 0: Ticket Acquisition
 
-First, check if `.claude/sdl-project.md` exists and read its **Source Control** section (if present) to pre-detect ADO org/project/URL.
+First, create the state file directory: `mkdir -p agent-state/{ticket}`. Then check if `.claude/sdl-project.md` exists and read its **Source Control** section (if present) to pre-detect ADO org/project/URL.
 
 Launch `joshreep-tools:sdl-ticket-fetcher` with prompt:
 
 > **Ticket number**: {ticket}
+> **State directory**: `agent-state/{ticket}/`
 > **Extra context**: {extra_context}
 >
 > {If Source Control was found in `.claude/sdl-project.md`, include:}
@@ -132,7 +135,7 @@ Launch `joshreep-tools:sdl-ticket-fetcher` with prompt:
 > - ADO org URL: {url}
 > Use these values instead of parsing git remote.
 
-After the subagent completes, extract the `<usage>` block. Measure `agent-state/TICKET.md` size with `wc -c`. Write the initial `agent-state/TOKEN_USAGE.md` with the header and Phase 0 row. Briefly inform the user what ticket was fetched and proceed.
+After the subagent completes, extract the `<usage>` block. Measure `agent-state/{ticket}/TICKET.md` size with `wc -c`. Write the initial `agent-state/{ticket}/TOKEN_USAGE.md` with the header and Phase 0 row. Briefly inform the user what ticket was fetched and proceed.
 
 ### Step 2.5 — Read Project Profile (Orchestrator)
 
@@ -146,21 +149,25 @@ If it does not exist, set `project_profile` to empty and continue. The pipeline 
 
 If `project_profile` is **not empty**, launch `joshreep-tools:sdl-architect` with prompt:
 
+> **State directory**: `agent-state/{ticket}/`
+>
 > **Project Profile (from `.claude/sdl-project.md` — pre-discovered, skip Steps 1-2 and validate only):**
 > {project_profile}
 
-If `project_profile` is **empty**, launch `joshreep-tools:sdl-architect` with no additional prompt context (it reads from agent-state/TICKET.md).
+If `project_profile` is **empty**, launch `joshreep-tools:sdl-architect` with prompt including only the state directory:
 
-Write the returned content to `agent-state/DRAFT_PLAN.md`. Extract the `<usage>` block. Measure `agent-state/DRAFT_PLAN.md` size. Update `agent-state/TOKEN_USAGE.md` with the Phase 1a row.
+> **State directory**: `agent-state/{ticket}/`
+
+Write the returned content to `agent-state/{ticket}/DRAFT_PLAN.md`. Extract the `<usage>` block. Measure `agent-state/{ticket}/DRAFT_PLAN.md` size. Update `agent-state/{ticket}/TOKEN_USAGE.md` with the Phase 1a row.
 
 ### Step 4 — Phase 1b: Plan Approval (Orchestrator — USER CHECKPOINT)
 
-**STOP HERE.** Present the plan from `agent-state/DRAFT_PLAN.md` to the user. Iterate on feedback until the user explicitly approves (e.g., "approved", "looks good", "go ahead").
+**STOP HERE.** Present the plan from `agent-state/{ticket}/DRAFT_PLAN.md` to the user. Iterate on feedback until the user explicitly approves (e.g., "approved", "looks good", "go ahead").
 
-- If feedback is minor: incorporate it and write `agent-state/PLAN.md` yourself.
+- If feedback is minor: incorporate it and write `agent-state/{ticket}/PLAN.md` yourself.
 - If feedback requires significant re-exploration: re-run the Phase 1a subagent with the feedback appended to the prompt, then present the revised plan.
 
-Once approved, write `agent-state/PLAN.md`. **Important**: Start by reading `agent-state/DRAFT_PLAN.md` in full and preserve ALL sections (including Risks & Edge Cases, Acceptance Criteria Mapping, etc.). Apply user feedback as targeted edits — do not rewrite from scratch. Add a note at the top about approval and any feedback incorporated.
+Once approved, write `agent-state/{ticket}/PLAN.md`. **Important**: Start by reading `agent-state/{ticket}/DRAFT_PLAN.md` in full and preserve ALL sections (including Risks & Edge Cases, Acceptance Criteria Mapping, etc.). Apply user feedback as targeted edits — do not rewrite from scratch. Add a note at the top about approval and any feedback incorporated.
 
 ### Step 4b — Gather Code Standards and Project Profile (Orchestrator)
 
@@ -192,27 +199,37 @@ Set `round = 1`. Loop up to 3 rounds:
 
 Launch `joshreep-tools:sdl-implementer` with prompt:
 
+> **Ticket number**: {ticket}
+> **State directory**: `agent-state/{ticket}/`
+>
 > **Code Standards (from CLAUDE.md — these override any conflicting instructions):**
 > {code_standards}
 >
-> {If round > 1: "This is re-work round {round}. Read `agent-state/IMPL_REVIEW.md` and prioritize addressing ALL feedback marked as required changes."}
+> {If round > 1: "This is re-work round {round}. Read `agent-state/{ticket}/IMPL_REVIEW.md` and prioritize addressing ALL feedback marked as required changes."}
 
 **Model optimization**: If the approved plan has 3 or fewer implementation steps and touches 5 or fewer files, pass `model: "sonnet"` to the Agent tool call for the implementer. The agent definition defaults to Opus, but simple mechanical changes (nullable fixes, single-field additions, pattern-following edits) don't require Opus-level reasoning. The TOKEN_USAGE.md data from future runs will validate this heuristic.
 
-After the implementer completes, extract the `<usage>` block. Measure `agent-state/IMPL_STATUS.md` size. Update `agent-state/TOKEN_USAGE.md` with the Phase 2 row (include round number).
+After the implementer completes, extract the `<usage>` block. Measure `agent-state/{ticket}/IMPL_STATUS.md` size. Update `agent-state/{ticket}/TOKEN_USAGE.md` with the Phase 2 row (include round number).
 
 **Phase 3 — Review:**
 
 Launch `joshreep-tools:sdl-reviewer` with prompt:
 
+> **Ticket number**: {ticket}
+> **State directory**: `agent-state/{ticket}/`
+>
 > **Code Standards (from CLAUDE.md — these override any conflicting instructions):**
 > {code_standards}
 
-Write the returned content to `agent-state/IMPL_REVIEW.md`. Extract the `<usage>` block. Measure `agent-state/IMPL_REVIEW.md` size. Update `agent-state/TOKEN_USAGE.md` with the Phase 3 row (include round number).
+**Re-review optimization**: If `round > 1`, pass `model: "sonnet"` to the Agent tool call and append to the prompt:
+
+> **Re-review mode**: This is round {round}. Focus ONLY on whether the required changes from the previous review (`agent-state/{ticket}/IMPL_REVIEW.md`) have been addressed. Do NOT re-review the entire diff. Check each item in the Required Changes Checklist, verify it was fixed, and issue APPROVED or CHANGES_REQUESTED based solely on whether required items were resolved. Keep your output concise.
+
+Write the returned content to `agent-state/{ticket}/IMPL_REVIEW.md`. Extract the `<usage>` block. Measure `agent-state/{ticket}/IMPL_REVIEW.md` size. Update `agent-state/{ticket}/TOKEN_USAGE.md` with the Phase 3 row (include round number).
 
 **Loop control (Orchestrator):**
 
-After writing `agent-state/IMPL_REVIEW.md`, check the verdict:
+After writing `agent-state/{ticket}/IMPL_REVIEW.md`, check the verdict:
 - **APPROVED** → proceed to Step 6
 - **CHANGES_REQUESTED** and round < 3 → increment round, re-run Phase 2 then Phase 3
 - **CHANGES_REQUESTED** and round >= 3 → **USER CHECKPOINT (MANDATORY)**: Present outstanding issues. Ask the user whether to (a) force approve and continue, (b) take over manually, or (c) provide guidance for another round. WAIT for response.
@@ -221,14 +238,17 @@ After writing `agent-state/IMPL_REVIEW.md`, check the verdict:
 
 Launch `joshreep-tools:sdl-e2e-tester` with prompt:
 
+> **Ticket number**: {ticket}
+> **State directory**: `agent-state/{ticket}/`
+>
 > **Code Standards (from CLAUDE.md — these override any conflicting instructions):**
 > {code_standards}
 
 **After the subagent completes (Orchestrator):**
 
-Extract the `<usage>` block. Measure `agent-state/E2E_REPORT.md` size. Update `agent-state/TOKEN_USAGE.md` with the Phase 4 row.
+Extract the `<usage>` block. Measure `agent-state/{ticket}/E2E_REPORT.md` size. Update `agent-state/{ticket}/TOKEN_USAGE.md` with the Phase 4 row.
 
-Read `agent-state/E2E_REPORT.md`:
+Read `agent-state/{ticket}/E2E_REPORT.md`:
 - If **NOT_APPLICABLE** (non-application changes only) → note "E2E tests not applicable (non-application changes)" and proceed to Step 7.
 - If **SERVERS_NOT_RUNNING** → **USER CHECKPOINT (MANDATORY)**: Present the server status and startup commands from the report. Tell the user to start the required servers, then ask: "Type 'ready' when servers are running to retry E2E tests, or 'skip' to proceed without E2E validation." WAIT for response.
   - If user responds 'ready': re-run the `joshreep-tools:sdl-e2e-tester` subagent with the same prompt
@@ -239,7 +259,7 @@ Read `agent-state/E2E_REPORT.md`:
   - **(c) "Skip E2E"** — note "E2E tests skipped (stale server)" and proceed to Step 7.
   WAIT for response.
 - If **NO_FRAMEWORK_EXISTS** → **USER CHECKPOINT (MANDATORY)**: Present the recommendation. If user approves, launch a subagent to install the framework and write/run tests. If declined, note "skipped" and continue.
-- If **regressions caused by implementation** → append regression details to `agent-state/IMPL_REVIEW.md` and go back to Step 5 (Phase 2 re-work).
+- If **regressions caused by implementation** → append regression details to `agent-state/{ticket}/IMPL_REVIEW.md` and go back to Step 5 (Phase 2 re-work).
 - If **test failures >= 50% of total tests** → **USER CHECKPOINT**: present the failures grouped by root cause. Ask whether to (a) retry E2E phase with guidance to fix, (b) skip E2E and proceed, or (c) provide specific instructions. WAIT for response.
 - If **infrastructure failures only** (browser not installed, no display server, DNS resolution) → note in report and continue. These cannot be fixed by the pipeline.
 - If **1-2 flaky failures with a passing majority** → note as potential flakes in report and continue.
@@ -257,14 +277,17 @@ After the E2E subagent completes (and before the audit), check for untracked fil
 
 Launch `joshreep-tools:sdl-auditor` with prompt:
 
+> **Ticket number**: {ticket}
+> **State directory**: `agent-state/{ticket}/`
+>
 > **Code Standards (from CLAUDE.md — these override any conflicting instructions):**
 > {code_standards}
 
-After the auditor completes, extract the `<usage>` block. Measure `agent-state/AUDIT.md` and `agent-state/PR_TEMPLATE.md` sizes. Update `agent-state/TOKEN_USAGE.md` with the Phase 5a row. Then write the **Summary** section (totals, distribution, efficiency indicators, cost estimate).
+After the auditor completes, extract the `<usage>` block. Measure `agent-state/{ticket}/AUDIT.md` and `agent-state/{ticket}/PR_TEMPLATE.md` sizes. Update `agent-state/{ticket}/TOKEN_USAGE.md` with the Phase 5a row. Then write the **Summary** section (totals, distribution, efficiency indicators, cost estimate).
 
 ### Step 8 — Phase 5b: Final Checkpoint (Orchestrator — USER CHECKPOINT)
 
-Read `agent-state/AUDIT.md`, `agent-state/PR_TEMPLATE.md`, and `agent-state/TOKEN_USAGE.md`.
+Read `agent-state/{ticket}/AUDIT.md`, `agent-state/{ticket}/PR_TEMPLATE.md`, and `agent-state/{ticket}/TOKEN_USAGE.md`.
 
 - If **APPROVED**: **STOP HERE.** Present the audit summary to the user. Summarize the full pipeline: what was built, how many review rounds, test results. Include a brief token usage summary from `TOKEN_USAGE.md`: total tokens, estimated cost, and number of rework rounds. Reference the PR description from `PR_TEMPLATE.md`. Offer to create a PR via `/pr` (which will use the PR_TEMPLATE.md content). WAIT for user response.
 - If **REJECTED**: **STOP HERE.** Identify which phase needs revisiting and explain why. Ask the user whether to (a) restart from the identified phase, (b) take over manually, or (c) force approve despite issues. WAIT for response.

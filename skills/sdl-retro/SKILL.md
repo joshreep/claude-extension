@@ -13,25 +13,25 @@ Your job is to analyze a completed `/sdl` pipeline run and produce a structured 
 
 ## Step 1: Parse Arguments
 
-If `$ARGUMENTS` contains a file path, use it as the output destination. Otherwise default to `agent-state/RETRO.md`.
+Extract the ticket number from `$ARGUMENTS` if provided (e.g. `/sdl-retro 5542`). If no ticket number is given, look for subdirectories under `agent-state/` and use the most recent one (by modification time). If `$ARGUMENTS` contains a file path, use it as the output destination. Otherwise default to `agent-state/{ticket}/RETRO.md`.
 
 ## Step 2: Validate Prerequisites
 
-Check that `agent-state/` exists and contains at least `TICKET.md` and `AUDIT.md`. If missing, inform the user that `/sdl` must have completed a run first and stop. If `agent-state/TOKEN_USAGE.md` is missing, note that token analysis in section 4g will be qualitative only (no quantitative data available).
+Check that `agent-state/{ticket}/` exists and contains at least `TICKET.md` and `AUDIT.md`. If missing, inform the user that `/sdl` must have completed a run first and stop. If `agent-state/{ticket}/TOKEN_USAGE.md` is missing, note that token analysis in section 4g will be qualitative only (no quantitative data available).
 
 ## Step 3: Gather Artifacts
 
 Read all of these (skip any that don't exist, but note them as gaps):
 
 **State files:**
-- `agent-state/TICKET.md` — requirements and acceptance criteria
-- `agent-state/PLAN.md` — approved implementation plan
-- `agent-state/DRAFT_PLAN.md` — original plan before user feedback (compare with PLAN.md for feedback analysis)
-- `agent-state/IMPL_STATUS.md` — what was built, files changed, decisions made
-- `agent-state/IMPL_REVIEW.md` — review verdict, issues by severity, required changes
-- `agent-state/E2E_REPORT.md` — test results, regressions, framework status
-- `agent-state/AUDIT.md` — final verdict, AC mapping, quality summary
-- `agent-state/TOKEN_USAGE.md` — per-phase token counts, tool uses, durations, and cost estimates
+- `agent-state/{ticket}/TICKET.md` — requirements and acceptance criteria
+- `agent-state/{ticket}/PLAN.md` — approved implementation plan
+- `agent-state/{ticket}/DRAFT_PLAN.md` — original plan before user feedback (compare with PLAN.md for feedback analysis)
+- `agent-state/{ticket}/IMPL_STATUS.md` — what was built, files changed, decisions made
+- `agent-state/{ticket}/IMPL_REVIEW.md` — review verdict, issues by severity, required changes
+- `agent-state/{ticket}/E2E_REPORT.md` — test results, regressions, framework status
+- `agent-state/{ticket}/AUDIT.md` — final verdict, AC mapping, quality summary
+- `agent-state/{ticket}/TOKEN_USAGE.md` — per-phase token counts, tool uses, durations, and cost estimates
 
 **Agent definitions** (for pipeline efficiency analysis):
 - `agents/sdl-ticket-fetcher.md`
@@ -129,7 +129,7 @@ This dimension evaluates the SDL pipeline design itself, not just this run's out
 
 This dimension evaluates how efficiently the pipeline uses tokens and context window capacity across the full run.
 
-**Quantitative analysis** (from `agent-state/TOKEN_USAGE.md` — skip this subsection if the file is missing):
+**Quantitative analysis** (from `agent-state/{ticket}/TOKEN_USAGE.md` — skip this subsection if the file is missing):
 
 - **Total cost**: Note the estimated cost. Flag if disproportionate to ticket complexity (e.g., >$5 for a single-field bug fix).
 - **Phase distribution**: Check whether token spend is proportional to phase complexity. Expected ranges:
@@ -164,7 +164,7 @@ Low-effort changes that would improve the next SDL run. Examples: tightening an 
 Specific suggestions for each `agents/sdl-*.md` file. Reference the agent file name and describe what should change and why. Do not write diffs — describe the recommendation clearly enough that someone can implement it.
 
 ### Token Optimization
-(Only include if `agent-state/TOKEN_USAGE.md` exists.) Specific recommendations based on quantitative findings:
+(Only include if `agent-state/{ticket}/TOKEN_USAGE.md` exists.) Specific recommendations based on quantitative findings:
 - Phase-specific suggestions (e.g., "Reduce architect discovery scope — it used 25% of tokens for a straightforward plan")
 - Model assignment suggestions (e.g., "Consider using Sonnet for the reviewer on simple tickets — review used 20% of tokens on Opus for a single-file change")
 - State file trimming suggestions with estimated token savings
