@@ -114,6 +114,15 @@ When tests need specific data conditions (feature flags, entity states, conditio
 
 Do NOT install anything. Write your recommendation in the report (Playwright for web, supertest for API-only, etc.) and note that user approval is needed.
 
+## Cross-Phase Redundancy Rules
+
+Upstream state files (TICKET.md, PLAN.md, IMPL_STATUS.md) already contain detailed information about the ticket, root cause, implementation, and risk mitigations. **Do not restate** content that exists upstream:
+- **Root cause analysis**: do NOT explain what the implementation changed or why — that is in PLAN.md and IMPL_STATUS.md
+- **Implementation details**: do NOT list which application files were modified or what each change does — that is in IMPL_STATUS.md
+- **Round history**: do NOT describe what happened in previous rounds — only report current test results
+
+Your report covers **testing only**: what tests exist, what was run, what passed/failed, and what regressions were found. Keep E2E_REPORT.md under 150 lines.
+
 ## Output
 
 Write `{state_directory}/E2E_REPORT.md` with:

@@ -50,7 +50,7 @@ After **every** Agent tool invocation, extract the `<usage>` block from the agen
 **What to add from orchestrator context:**
 - Phase number (0, 1a, 2, 3, 4, 5a)
 - Agent name (sdl-ticket-fetcher, sdl-architect, sdl-implementer, sdl-reviewer, sdl-e2e-tester, sdl-auditor)
-- Model (haiku, opus, sonnet — known from agent definitions)
+- Model — record the **actual model used**, not the agent definition default. If you passed a `model:` override in the Agent tool call, record that override. If you did not pass an override, record the agent definition's default: haiku for ticket-fetcher, opus for architect/reviewer/implementer, sonnet for e2e-tester/auditor.
 - Round number (for phases 2–3 in the implementation loop; `—` for other phases)
 
 **When to measure state file size:** After writing or confirming a state file for a phase, run `wc -c < agent-state/{ticket}/{FILE}.md` to get the byte count.
@@ -117,6 +117,14 @@ After **every** Agent tool invocation, extract the `<usage>` block from the agen
 Extract from `$ARGUMENTS`:
 - **Ticket number** (required): a numeric work item ID
 - **Extra context** (optional): anything after the number
+
+### Step 1.5 — Detect Re-run (Round 2+ Pipeline)
+
+Check if `agent-state/{ticket}/TICKET.md` already exists. If it does, this is a re-run for a ticket that has already been through the pipeline (e.g., bugs found during QA of a previous round's output).
+
+- **If TICKET.md exists AND extra context was provided**: Check the file's modification time (`stat -f '%Sm' -t '%Y-%m-%d' agent-state/{ticket}/TICKET.md`). If it was fetched more than 24 hours ago, inform the user of the fetch date and ask whether to re-fetch before proceeding. Otherwise, skip Phase 0 — the extra context describes new issues to fix. Proceed directly to Step 2.5 (Read Project Profile) and then Step 3 (Architect), passing the extra context to the architect so it can scope the new work.
+- **If TICKET.md exists AND no extra context was provided**: Show the user the TICKET.md fetch date and ask whether to (a) re-fetch the ticket (in case it was updated) or (b) reuse the existing TICKET.md and proceed.
+- **If TICKET.md does not exist**: Proceed to Step 2 (Phase 0) as normal.
 
 ### Step 2 — Phase 0: Ticket Acquisition
 

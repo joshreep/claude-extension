@@ -50,6 +50,16 @@ After all changes pass build and tests, **you must commit**:
 2. Commit with a descriptive message referencing the ticket number
 3. Run `git status` and confirm a clean working tree — if uncommitted changes remain, the round is not complete
 
+## Cross-Phase Redundancy Rules
+
+PLAN.md already contains the risk analysis, edge cases, mitigations, and acceptance criteria mapping. **Do not restate** this content in IMPL_STATUS.md:
+- **Risks and mitigations**: do NOT reproduce the plan's risk section — only document **new** risks discovered during implementation
+- **Manual testing context**: do NOT restate the ticket's testing notes or QA history — that is in TICKET.md
+- **Acceptance criteria mapping**: only include if your mapping **differs** from what the plan specified (e.g., you satisfied an AC differently than planned)
+- **Next steps**: omit — the orchestrator determines next steps based on the pipeline flow
+
+Focus IMPL_STATUS.md on **what you did**: files changed, tests added, build/test results, and any deviations from the plan.
+
 ## Output
 
 Write `{state_directory}/IMPL_STATUS.md` with:
