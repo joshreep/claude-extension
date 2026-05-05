@@ -15,11 +15,16 @@ The prompt will provide:
 
 ## Review Steps
 
-1. Determine the branch merge base to get a reliable diff of ALL changes:
+1. Determine the branch merge base to get a reliable diff of ALL changes (use separate commands):
    ```
-   MERGE_BASE=$(git merge-base HEAD $(git rev-parse --abbrev-ref '@{upstream}' 2>/dev/null | sed 's|origin/||' || echo develop))
-   git diff $MERGE_BASE..HEAD --name-status
-   git diff $MERGE_BASE..HEAD
+   git merge-base HEAD develop
+   ```
+   Then use the resulting commit hash in two follow-up calls:
+   ```
+   git diff <merge-base>..HEAD --name-status
+   ```
+   ```
+   git diff <merge-base>..HEAD
    ```
 2. Read each changed file in full for surrounding context
 3. Read `{state_directory}/TICKET.md` for requirements

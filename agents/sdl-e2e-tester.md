@@ -22,10 +22,13 @@ If the prompt includes a **Project Profile** section (from `.claude/sdl-project.
 
 **Before any server checks or test writing**, determine whether the changes require E2E testing:
 
-1. Get the diff file list:
+1. Get the diff file list (use two separate commands):
    ```bash
-   MERGE_BASE=$(git merge-base HEAD $(git rev-parse --abbrev-ref '@{upstream}' 2>/dev/null | sed 's|origin/||' || echo develop))
-   git diff $MERGE_BASE..HEAD --name-only
+   git merge-base HEAD develop
+   ```
+   Then use the resulting commit hash:
+   ```bash
+   git diff <merge-base>..HEAD --name-only
    ```
 
 2. Classify each changed file. If **every** file matches one of these non-application categories, E2E tests are not applicable:
