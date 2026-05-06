@@ -46,4 +46,11 @@ Then invoke skills like `/joshreep-tools:pr`, `/joshreep-tools:ticket 12345`, et
 
 ## Versioning
 
-Update the `version` field in `.claude-plugin/plugin.json` when releasing changes (semver).
+Versioning is automated via [release-please](https://github.com/googleapis/release-please). Use conventional commit prefixes:
+- `feat:` → minor bump
+- `fix:` → patch bump
+- `feat!:` or `BREAKING CHANGE:` → major bump
+
+When commits land on `main` (via merged PRs from `dev`), release-please opens a release PR that bumps versions in `plugin.json` and `marketplace.json` and generates `CHANGELOG.md`. Merge the release PR to tag the release.
+
+Do **not** manually edit version numbers in `plugin.json` or `marketplace.json`.
