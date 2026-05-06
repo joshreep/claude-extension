@@ -53,7 +53,7 @@ Check `relations` for `rel === "System.LinkTypes.Hierarchy-Reverse"` (parent lin
 
 ## Step 4 — Write Summary
 
-Create the state directory if needed (`mkdir -p {state_directory}`). Check if `agent-state/` is in `.gitignore` — if not, append it.
+Create the state directory if needed (`mkdir -p {state_directory}`). If the state directory is inside the project working tree (e.g., starts with `agent-state/`), check if `agent-state/` is in `.gitignore` — if not, append it. If the state directory is an absolute path outside the project (e.g., `/tmp/...`), skip the `.gitignore` check.
 
 Write `{state_directory}/TICKET.md` with:
 - Ancestry chain (type, title, state, one-sentence summary per ancestor)
