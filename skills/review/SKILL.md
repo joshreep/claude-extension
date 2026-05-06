@@ -3,7 +3,7 @@ name: review
 description: Composite code review — fetches ticket context, PR feedback, and performs a comprehensive diff review cross-referenced against requirements.
 user-invocable: true
 allowed-tools: Bash, Read, Grep, Glob, Agent
-argument-hint: "<ticket-number> [PR_ID] [feature-branch] [base-branch]"
+argument-hint: "<ticket-number> [PR_ID | feature-branch] [base-branch]"
 context: inherit
 ---
 
@@ -15,11 +15,10 @@ You are performing a comprehensive code review that cross-references ticket requ
 
 Extract from `$ARGUMENTS`:
 - **Ticket number** (required): numeric work item ID
-- **PR ID** (optional): numeric PR identifier — fetch PR threads and build status
-- **Feature branch** (optional): branch to review. Default: current branch (`git branch --show-current`)
+- **PR ID or feature branch** (optional): if numeric, treat as PR ID. If it looks like a branch name (contains `/` or matches a git ref), treat as feature branch.
 - **Base branch** (optional): base branch to diff against. Default: auto-detect
 
-Parsing heuristic: The first token is always the ticket number. If the second token is numeric and a subsequent token looks like a branch name (contains `/` or matches a known git ref), treat the second as PR_ID. If the second token looks like a branch name, treat it as feature-branch (skip PR feedback).
+When a PR ID is provided, the feature and base branches will be extracted from the PR metadata in Step 3 — no need for the user to specify them separately.
 
 ## Step 2: Fetch Ticket Context
 
@@ -49,7 +48,20 @@ Run `git remote get-url origin` and extract ORG, PROJECT, REPO:
 - HTTPS: `https://ORG@dev.azure.com/ORG/PROJECT/_git/REPO`
 - URL-decode percent-encoded characters (e.g. `%20` → space)
 
-### 3b — Fetch PR threads
+### 3b — Extract branches from PR metadata
+
+**GitHub:**
+```
+gh api repos/ORG/REPO/pulls/PR_ID --jq '{head: .head.ref, base: .base.ref}'
+```
+
+**Azure DevOps:**
+```
+az repos pr show --id PR_ID --org "https://dev.azure.com/ORG" --query '{sourceBranch: sourceRefName, targetBranch: targetRefName}' -o json
+```
+Strip `refs/heads/` prefix from ADO branch names. Use these as the feature branch and base branch for Step 4 (overriding any auto-detection).
+
+### 3c — Fetch PR threads
 
 **GitHub:**
 ```
@@ -69,7 +81,7 @@ curl -s -H "Authorization: Bearer $TOKEN" \
 ```
 Parse the JSON and extract non-system comments with author, thread ID, and status.
 
-### 3c — Check build status
+### 3d — Check build status
 
 **GitHub:**
 ```
@@ -97,7 +109,7 @@ az pipelines build show --id BUILD_ID --org "https://dev.azure.com/ORG" --projec
 ```
 Check `validationResults` first, then timeline for failed records, then build logs as fallback.
 
-### 3d — Organize feedback
+### 3e — Organize feedback
 
 Group into:
 - **Build Status**: Most recent build result. If failed, include specific errors.
@@ -107,17 +119,17 @@ Group into:
 
 ### 4a — Setup and branch validation
 
-Run these in parallel:
-- `git remote get-url origin`
-- `git branch --show-current` (if feature branch was not specified)
-- `git fetch origin`
+Run `git fetch origin` to ensure remote refs are up to date.
 
-Determine the feature branch and base branch. For the base branch, try in order:
-1. The user-provided base branch argument
-2. GitHub: `gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name'`
-   Azure DevOps: `az repos show --org "https://dev.azure.com/ORG" --project "PROJECT" --repository "REPO" --query defaultBranch --output tsv` (strip `refs/heads/` prefix)
-3. `git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||'`
-4. Heuristic: check which of `develop`, `main`, `master` exists on remote
+Determine the feature branch and base branch using this priority:
+1. **PR-derived** (from Step 3b): if a PR ID was provided, use the source/target branches extracted from PR metadata.
+2. **User-provided arguments**: explicit feature-branch and/or base-branch from Step 1.
+3. **Auto-detect feature branch**: `git branch --show-current`
+4. **Auto-detect base branch** (try in order):
+   - GitHub: `gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name'`
+   - Azure DevOps: `az repos show --org "https://dev.azure.com/ORG" --project "PROJECT" --repository "REPO" --query defaultBranch --output tsv` (strip `refs/heads/` prefix)
+   - `git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||'`
+   - Heuristic: check which of `develop`, `main`, `master` exists on remote
 
 Normalize branches to remote refs where possible (prefer `origin/branch` over local `branch`).
 
