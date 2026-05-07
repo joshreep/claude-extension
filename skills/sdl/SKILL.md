@@ -168,6 +168,20 @@ If `project_profile` is **empty**, launch `joshreep-tools:sdl-architect` with pr
 
 Write the returned content to `agent-state/{ticket}/DRAFT_PLAN.md`. Extract the `<usage>` block. Measure `agent-state/{ticket}/DRAFT_PLAN.md` size. Update `agent-state/{ticket}/TOKEN_USAGE.md` with the Phase 1a row.
 
+### Step 3.5 — Hypothesis Checkpoint (Orchestrator — OPTIONAL CHECKPOINT)
+
+**Only applies when the ticket type is Bug/Defect.** After writing `DRAFT_PLAN.md`, if the ticket is a bug fix, present a brief checkpoint:
+
+> "The architect's plan targets a fix at `{file:line}`. Do you want me to:
+> **(a)** Accept the ticket's hypothesis and proceed with this plan
+> **(b)** Investigate independently to verify the root cause before committing to the plan"
+
+- If the user picks **(a)**: proceed to Step 4 (plan approval) as normal.
+- If the user picks **(b)**: the orchestrator should read the relevant source files and route configuration (or whatever is needed to verify) and present findings to the user before continuing to Step 4. This verification happens in the orchestrator context — do NOT re-run the architect agent.
+- If the user skips or says the plan looks fine: treat as (a) and proceed.
+
+Skip this checkpoint entirely for non-defect tickets (PBI, Task, Feature, etc.) — those don't have a "hypothesis" to validate.
+
 ### Step 4 — Phase 1b: Plan Approval (Orchestrator — USER CHECKPOINT)
 
 **STOP HERE.** Present the plan from `agent-state/{ticket}/DRAFT_PLAN.md` to the user. Iterate on feedback until the user explicitly approves (e.g., "approved", "looks good", "go ahead").
@@ -229,6 +243,8 @@ Launch `joshreep-tools:sdl-reviewer` with prompt:
 > **Code Standards (from CLAUDE.md — these override any conflicting instructions):**
 > {code_standards}
 
+**First-round model optimization**: If `round == 1` AND the approved plan has ≤3 implementation steps AND touches ≤5 files, pass `model: "sonnet"` to the Agent tool call. A 2-line change doesn't need Opus-level reasoning for review — Sonnet can verify correctness, pattern consistency, and test coverage for simple changes.
+
 **Re-review optimization**: If `round > 1`, pass `model: "sonnet"` to the Agent tool call and append to the prompt:
 
 > **Re-review mode**: This is round {round}. Focus ONLY on whether the required changes from the previous review (`agent-state/{ticket}/IMPL_REVIEW.md`) have been addressed. Do NOT re-review the entire diff. Check each item in the Required Changes Checklist, verify it was fixed, and issue APPROVED or CHANGES_REQUESTED based solely on whether required items were resolved. Keep your output concise.
@@ -244,7 +260,18 @@ After writing `agent-state/{ticket}/IMPL_REVIEW.md`, check the verdict:
 
 ### Step 6 — Phase 4: E2E Testing
 
-Launch `joshreep-tools:sdl-e2e-tester` with prompt:
+**Pre-flight server check (Orchestrator):** Before spawning the E2E agent, verify servers are running using the check-localhost script. Extract the backend and frontend ports from `project_profile` (Dev Servers section) or default to `44369` and `4200`:
+
+```bash
+check-localhost.sh {backend_port} {frontend_port}
+```
+
+- If the script exits 0 (all reachable): proceed to launch the E2E agent.
+- If the script exits 1 (one or more unreachable): **USER CHECKPOINT (MANDATORY)**. Parse the JSON output to identify which servers are down. Present the status and startup commands (from the project profile Dev Servers section). Ask: "Type 'ready' when servers are running to retry, or 'skip' to proceed without E2E validation." WAIT for response.
+  - If user responds 'ready': re-run the check-localhost script. If it passes, proceed to launch the E2E agent. If it still fails, ask again.
+  - If user responds 'skip': note "E2E tests skipped (servers not started)" and proceed to Step 7.
+
+Once servers are confirmed running, launch `joshreep-tools:sdl-e2e-tester` with prompt:
 
 > **Ticket number**: {ticket}
 > **State directory**: `agent-state/{ticket}/`

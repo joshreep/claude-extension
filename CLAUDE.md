@@ -25,6 +25,8 @@ This is a Claude Code plugin (`joshreep-tools`) that packages reusable slash com
   - `sdl-reviewer.md` — Phase 3: code review
   - `sdl-e2e-tester.md` — Phase 4: end-to-end testing
   - `sdl-auditor.md` — Phase 5a: final quality audit
+- `bin/` — utility scripts added to PATH when the plugin is active
+  - `check-localhost.sh` — verifies localhost services are reachable on given ports; outputs JSON, exits 0/1
 
 ## Key Conventions
 
