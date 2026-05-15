@@ -40,6 +40,16 @@ These are your baseline understanding. Use file-system exploration in Step 2 onl
 - E2E test setup (or lack thereof)
 - Linting & static analysis tools
 
+## QA-Return Hypothesis Check
+
+Before drafting the plan, check whether `{state_directory}/TICKET.md` begins with a `## Current Defect` section. If it does:
+
+1. Read that section verbatim — it is the authoritative description of what QA says is broken.
+2. **State in one sentence** what the QA comment says is broken.
+3. Identify your root cause from code exploration. If it differs from what the QA comment describes, explain the discrepancy explicitly before writing the plan. This surfaces misalignment before implementation begins and prevents fixing the wrong thing.
+
+If TICKET.md does not contain a `## Current Defect` section, skip this check.
+
 ## Step 3 — Analyze existing state against acceptance criteria
 
 Before planning new work, check which ACs are **already satisfied** by the current codebase. For each AC in the ticket:

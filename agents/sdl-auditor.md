@@ -39,6 +39,46 @@ The prompt will provide:
 
 Run the full build and test commands one last time.
 
+## CodeScene Gate Check
+
+Run code health analysis on all files changed on this branch using the CodeScene MCP tools:
+
+1. Run `analyze_change_set` against the main branch (`develop` or `main`) for the repository. Use the git repository root path.
+2. For every file with a `"degraded"` verdict in the results, note the file name and the specific smells that worsened.
+3. If any file is degraded, this is a **soft gate failure** — list the degraded files and their specific smells as `Major` issues in the Issues section. Do NOT automatically flip the verdict to `REJECTED`. Use judgment: if the degraded smell is in a file touched only incidentally (e.g., a rename or import change), or if the smell was pre-existing and the change did not meaningfully worsen it, downgrade to `Minor`. Only flip the verdict to `REJECTED` if the degradation was clearly introduced by this implementation and represents a genuine quality regression (not pre-existing debt).
+
+If the CodeScene MCP tools are unavailable, note "CodeScene gate check skipped — tools not available" and continue without blocking.
+
+## Coverage Gate Check
+
+After running the test suite, check diff coverage against the 80% threshold:
+
+**Angular (TypeScript):**
+
+```bash
+npx ng test --configuration=ci --no-watch --browsers=ChromeHeadless --code-coverage 2>&1 | tail -30
+```
+
+Parse the coverage summary output. Look for the overall statements/branches/lines coverage percentage reported for files changed in this branch. If coverage output is not available from the test run, check for a `coverage/` directory:
+
+```bash
+ls coverage/ 2>/dev/null && cat coverage/lcov.info 2>/dev/null | grep -A3 "SF:" | head -60
+```
+
+**C# (.NET):**
+
+```bash
+dotnet test --collect:"XPlat Code Coverage" --results-directory ./TestResults 2>&1 | tail -20
+```
+
+Then find and summarize the coverage report:
+
+```bash
+find ./TestResults -name "coverage.cobertura.xml" | head -1 | xargs grep -o 'line-rate="[^"]*"' | head -5
+```
+
+**Gate rule:** If diff coverage for changed files is below 80%, note the specific uncovered files and their coverage percentages in the Issues section. This is a **soft gate** — include it as a `Major` issue and note it in the verdict summary, but do not automatically flip the verdict to `REJECTED` for coverage alone. Use judgment: if the uncovered code is entity-only classes (no logic) or configuration files, note that and downgrade to `Minor`.
+
 ## Output
 
 Write **two separate files**:
@@ -58,7 +98,7 @@ The goal is that each state file adds **new information**, not restated informat
 Focus on verdict and quality assessment (~150 lines max):
 - **Verdict**: `APPROVED` or `REJECTED`
 - **Acceptance Criteria Table**: each AC mapped to evidence (file:line, test name)
-- **Quality Summary**: code health, test coverage, security notes
+- **Quality Summary**: code health (CodeScene gate result), test coverage (diff coverage % vs 80% threshold), security notes
 - **Issues Found** (if any) — organize by severity
 - **Deployment Readiness**: pre-deployment checklist, rollback plan — reference upstream files for details already documented there
 
@@ -76,7 +116,7 @@ User-facing PR description with no internal audit details:
 
 Do NOT include:
 - Round numbers or review history
-- CodeScene scores or internal quality metrics
+- CodeScene numeric scores or internal quality metrics (gate pass/fail is fine in Deployment Notes if relevant)
 - Pipeline execution details
 - Claude attribution or "Generated with Claude Code" footers
 
