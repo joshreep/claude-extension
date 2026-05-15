@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.1](https://github.com/joshreep/claude-extension/compare/v1.8.0...v1.8.1) (2026-05-15)
+
+
+### Bug Fixes
+
+* retro-driven improvements — soften CodeScene gate, fix QA detection, ephemeral image paths, port fallback, and curl bypass ([#5](https://github.com/joshreep/claude-extension/issues/5)) ([51b2f56](https://github.com/joshreep/claude-extension/commit/51b2f56b93f2f44421081b89d9871ff958fd9d8e))
+
 ## [1.8.0](https://github.com/joshreep/claude-extension/compare/v1.7.1...v1.8.0) (2026-05-07)
 
 
