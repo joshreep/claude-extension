@@ -260,15 +260,17 @@ After writing `agent-state/{ticket}/IMPL_REVIEW.md`, check the verdict:
 
 ### Step 6 — Phase 4: E2E Testing
 
-**Pre-flight server check (Orchestrator):** Before spawning the E2E agent, verify servers are running using the check-localhost script. Extract the backend and frontend ports from `project_profile` (Dev Servers section) or default to `44369` and `4200`:
+**Pre-flight server check (Orchestrator):** Before spawning the E2E agent, extract the backend and frontend ports from `project_profile` (Dev Servers section). If the project profile does not list server URLs/ports, **ask the user**: "I need the dev server ports to verify servers are running before E2E tests. What ports are your backend and frontend running on? (or type 'skip' to proceed without the pre-flight check)" WAIT for response. If the user provides ports, use them. If the user types 'skip', proceed directly to launching the E2E agent.
+
+Once ports are known, run:
 
 ```bash
 check-localhost.sh {backend_port} {frontend_port}
 ```
 
-- If the script exits 0 (all reachable): proceed to launch the E2E agent.
+- If the script exits 0 (all reachable): proceed to launch the E2E agent. Include `PRE_FLIGHT_PASSED: true` in the prompt so the agent skips its own server check.
 - If the script exits 1 (one or more unreachable): **USER CHECKPOINT (MANDATORY)**. Parse the JSON output to identify which servers are down. Present the status and startup commands (from the project profile Dev Servers section). Ask: "Type 'ready' when servers are running to retry, or 'skip' to proceed without E2E validation." WAIT for response.
-  - If user responds 'ready': re-run the check-localhost script. If it passes, proceed to launch the E2E agent. If it still fails, ask again.
+  - If user responds 'ready': re-run the check-localhost script. If it passes, proceed to launch the E2E agent with `PRE_FLIGHT_PASSED: true`. If it still fails, ask again.
   - If user responds 'skip': note "E2E tests skipped (servers not started)" and proceed to Step 7.
 
 Once servers are confirmed running, launch `joshreep-tools:sdl-e2e-tester` with prompt:

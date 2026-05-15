@@ -44,6 +44,11 @@ The prompt will provide:
 - **Security**: Injection vulnerabilities, exposed secrets, OWASP top 10?
 - **Performance**: N+1 queries, unnecessary allocations, blocking operations?
 - **Existing patterns**: Does new code match surrounding style/architecture?
+- **Structural smells** — check for patterns that CodeScene flags as Bumpy Road or Code Duplication:
+  - Two or more nearly-identical blocks of 5+ lines introduced by this change (Bumpy Road) — should be extracted to a shared helper
+  - Methods where this change added 2+ branches with near-identical logic
+  - Repeated test scaffolding across adjacent test methods (e.g., three methods each inlining the same factory + context + handler setup) — should use a shared `Create*` helper
+  Flag these as **Major** — they must be addressed before merge.
 
 ## Severity Calibration
 

@@ -58,19 +58,20 @@ If the prompt includes a **Project Profile** section (from `.claude/sdl-project.
 
 ## Pre-flight Check: Application Servers
 
-**Before writing any tests**, verify that the application servers are running:
+**Skip this section entirely** if the prompt includes `PRE_FLIGHT_PASSED: true` — the orchestrator already verified servers are up before launching this agent. Proceed directly to the Code Freshness Check.
 
-1. Extract server URLs from `{state_directory}/PLAN.md` or common conventions:
-   - Backend API: typically `https://localhost:44369`, `http://localhost:5000`, or from `launchSettings.json`
-   - Frontend dev server: typically `http://localhost:4200`, `http://localhost:3000`, or from `package.json` scripts
+**If no pre-flight result was passed**, verify servers are running:
 
-2. Test connectivity using curl with generous timeouts:
+1. Extract the backend and frontend ports from the Project Profile (Dev Servers section) or from `{state_directory}/PLAN.md`. If ports cannot be determined, write `SERVERS_NOT_RUNNING` and note that ports are unknown.
+
+2. Run the `check-localhost.sh` script — this is the **only** permitted connectivity check:
    ```bash
-   curl -s -o /dev/null -w "%{http_code}" --connect-timeout 2 --max-time 5 --insecure <backend_url>
-   curl -s -o /dev/null -w "%{http_code}" --connect-timeout 2 --max-time 5 <frontend_url>
+   check-localhost.sh {backend_port} {frontend_port}
    ```
+   **Do NOT use `curl` as a fallback or supplement.** `curl` requires a separate permission approval for each invocation, which defeats the purpose of the dedicated script. `check-localhost.sh` is on PATH (added by this plugin), outputs structured JSON, and handles both HTTP and HTTPS. If the script is not found, write `SERVERS_NOT_RUNNING` and note "check-localhost.sh not available" — do not attempt curl.
 
-3. **If either server is unreachable** (non-2xx status or connection error):
+3. **If the script exits 1** (one or more unreachable):
+   - Parse the JSON output to identify which servers are down
    - Write `{state_directory}/E2E_REPORT.md` with:
      - Status: `SERVERS_NOT_RUNNING`
      - Which servers are down (backend/frontend/both) with their URLs
@@ -78,7 +79,7 @@ If the prompt includes a **Project Profile** section (from `.claude/sdl-project.
    - Return: `"E2E tests blocked: application servers not running. Backend: [status], Frontend: [status]. User intervention required."`
    - The orchestrator will prompt the user to start servers and re-run this phase
 
-4. **If both servers respond**: Proceed to the Code Freshness Check.
+4. **If the script exits 0**: Proceed to the Code Freshness Check.
 
 ## Code Freshness Check
 
