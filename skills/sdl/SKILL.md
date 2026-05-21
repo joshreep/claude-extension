@@ -31,8 +31,10 @@ All state file paths above are relative to `agent-state/{ticket}/`. The orchestr
 **Project-agnostic**: Make zero assumptions about tech stack. If `.claude/sdl-project.md` exists (from `/sdl-init`), use it as the baseline. Otherwise, subagents discover at runtime.
 
 **CRITICAL — USER CHECKPOINTS ARE MANDATORY**: The following checkpoints require explicit user approval before proceeding. You (the orchestrator) MUST stop and wait for user input at each one. Do NOT skip, combine, or auto-approve any checkpoint. Subagents CANNOT interact with the user — only you can.
+- **Phase 0.5** (Bug tickets only): Data verification hold-point — present the architect's diagnostics, wait for the user to run them and paste results, validate against hold criteria
 - **Phase 1b**: Architect plan approval — present the plan, iterate on feedback, wait for explicit approval
 - **Phase 3 loop** (round >= 3): Review escalation — present outstanding issues, wait for user decision
+- **Phase 4 verdict verification** (orchestrator-only, no user input): re-run the E2E test command independently and visual-diff against the agent's verbatim output before trusting an APPROVED verdict
 - **Phase 4 follow-up** (no e2e framework): E2E framework recommendation — wait for user confirmation before installing
 - **Phase 5b**: Audit completion — present summary, wait for user to confirm PR creation
 
@@ -168,19 +170,39 @@ If `project_profile` is **empty**, launch `joshreep-tools:sdl-architect` with pr
 
 Write the returned content to `agent-state/{ticket}/DRAFT_PLAN.md`. Extract the `<usage>` block. Measure `agent-state/{ticket}/DRAFT_PLAN.md` size. Update `agent-state/{ticket}/TOKEN_USAGE.md` with the Phase 1a row.
 
-### Step 3.5 — Hypothesis Checkpoint (Orchestrator — OPTIONAL CHECKPOINT)
+### Step 3.5 — Bug-Fix Data Verification Hold-Point (Orchestrator — MANDATORY FOR BUG TICKETS)
 
-**Only applies when the ticket type is Bug/Defect.** After writing `DRAFT_PLAN.md`, if the ticket is a bug fix, present a brief checkpoint:
+**Applies when the ticket type is Bug or Defect.** Skip this step entirely for non-defect tickets (PBI, Task, Feature, Spike).
 
-> "The architect's plan targets a fix at `{file:line}`. Do you want me to:
-> **(a)** Accept the ticket's hypothesis and proceed with this plan
-> **(b)** Investigate independently to verify the root cause before committing to the plan"
+For Bug tickets, the architect's plan MUST include a `## Phase 0: Verification` section with concrete diagnostics (SQL queries, log queries, curl invocations, or scripts) the user can run to confirm or refute the root-cause hypothesis BEFORE any code is written. The reason: bug-fix code that "looks right" can pass review and tests and still ship the wrong fix if the hypothesis was wrong.
 
-- If the user picks **(a)**: proceed to Step 4 (plan approval) as normal.
-- If the user picks **(b)**: the orchestrator should read the relevant source files and route configuration (or whatever is needed to verify) and present findings to the user before continuing to Step 4. This verification happens in the orchestrator context — do NOT re-run the architect agent.
-- If the user skips or says the plan looks fine: treat as (a) and proceed.
+**Orchestrator actions:**
 
-Skip this checkpoint entirely for non-defect tickets (PBI, Task, Feature, etc.) — those don't have a "hypothesis" to validate.
+1. After writing `DRAFT_PLAN.md`, check whether it contains a `## Phase 0: Verification` section (or equivalent — e.g., "Verification Hold-Point", "Phase 0 — Verify hypothesis"). If absent, push the plan back to the architect with the feedback: "Bug ticket — please add a Phase 0 verification section with concrete diagnostics per the agent definition." Re-run the architect with the same prompt plus this feedback.
+
+2. Once Phase 0 is present, present it to the user along with the diagnostics:
+
+   > "This is a Bug ticket, so the plan opens with a verification step. Please run the following diagnostics against {environment} and paste the results — implementation will not start until the hypothesis is confirmed.
+   >
+   > [paste Phase 0 verbatim from DRAFT_PLAN.md]
+   >
+   > Hold criteria: [paste pass/fail criteria from Phase 0]
+   >
+   > **(a) I'll run the diagnostics** — paste results here, I will validate against the criteria, then proceed to plan approval
+   > **(b) Skip diagnostics, accept hypothesis** — explicit opt-out (use only if you are certain of the root cause; this is the path that has historically shipped wrong fixes)
+   > **(c) Take over manually** — exit pipeline, you'll handle the verification + fix yourself"
+
+3. If the user picks **(a)**:
+   - Wait for results.
+   - When results arrive, validate them against the hold criteria from Phase 0.
+   - If criteria are met: edit `DRAFT_PLAN.md` to record the verification results inline (so the auditor and reviewer can see what was confirmed), then proceed to Step 4 (plan approval).
+   - If criteria are NOT met: present the discrepancy to the user. Ask whether to (i) revise the plan based on the new data, (ii) accept the hypothesis anyway with a documented rationale, or (iii) exit. Wait for response.
+
+4. If the user picks **(b)**: record their explicit opt-out in `DRAFT_PLAN.md` ("User opted out of Phase 0 verification on {date}; hypothesis accepted on faith.") and proceed to Step 4. The auditor will surface this opt-out in the final report.
+
+5. If the user picks **(c)**: stop the pipeline.
+
+The hold-point is mandatory for Bug tickets specifically because past pipeline runs without it have shipped fixes based on theory that turned out to address a non-existent state. Five minutes of diagnostic time prevents one bad PR.
 
 ### Step 4 — Phase 1b: Plan Approval (Orchestrator — USER CHECKPOINT)
 
@@ -285,7 +307,19 @@ Once servers are confirmed running, launch `joshreep-tools:sdl-e2e-tester` with 
 
 Extract the `<usage>` block. Measure `agent-state/{ticket}/E2E_REPORT.md` size. Update `agent-state/{ticket}/TOKEN_USAGE.md` with the Phase 4 row.
 
-Read `agent-state/{ticket}/E2E_REPORT.md`:
+**Verdict verification (MANDATORY when E2E_REPORT.md verdict is APPROVED):**
+
+The E2E agent has historically misreported APPROVED while tests were failing or skipped. Before trusting an APPROVED verdict, verify it independently:
+
+1. Read `agent-state/{ticket}/E2E_REPORT.md`. Confirm it has a `## Verbatim Test Output` section with per-test pass/fail markers and a summary line. If absent, treat the verdict as unverified — push back to the agent: "E2E_REPORT.md is missing the required Verbatim Test Output section. Re-run with `--reporter=list` (or framework equivalent) and paste the output."
+2. Re-run the exact test command from the report yourself, capturing per-test output. Compare against the agent's pasted output:
+   - **All test result lines match** (count of `✓`/`✘`/`-` markers identical, summary line identical) → verdict is verified, proceed.
+   - **Mismatch** (different counts, different test names, additional failures) → push back to the agent with the actual output: "Your report claimed N passing but the orchestrator's re-run showed M. Reconcile or revise verdict."
+3. If the agent's report includes a `## Repeatability Check` section (second run output), verify the orchestrator's run matches that too. If neither run section exists and verdict is APPROVED, the agent did not follow its own discipline — push back.
+
+This verification is the orchestrator's job, not the user's. Skipping it (e.g., "trust the agent") has produced misleading audit trails in past runs and is forbidden.
+
+Once the verdict is verified, read `agent-state/{ticket}/E2E_REPORT.md`:
 - If **NOT_APPLICABLE** (non-application changes only) → note "E2E tests not applicable (non-application changes)" and proceed to Step 7.
 - If **SERVERS_NOT_RUNNING** → **USER CHECKPOINT (MANDATORY)**: Present the server status and startup commands from the report. Tell the user to start the required servers, then ask: "Type 'ready' when servers are running to retry E2E tests, or 'skip' to proceed without E2E validation." WAIT for response.
   - If user responds 'ready': re-run the `joshreep-tools:sdl-e2e-tester` subagent with the same prompt

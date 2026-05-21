@@ -49,6 +49,10 @@ The prompt will provide:
   - Methods where this change added 2+ branches with near-identical logic
   - Repeated test scaffolding across adjacent test methods (e.g., three methods each inlining the same factory + context + handler setup) — should use a shared `Create*` helper
   Flag these as **Major** — they must be addressed before merge.
+- **Touched-file standards check** — for each file in the diff:
+  1. **Suppression annotations on touched files**: search the file for pre-existing suppression annotations — `// @codescene(disable:...)`, `// eslint-disable`, `// @ts-ignore`, `// @ts-nocheck`, `# pylint: disable=`, `# noqa`, `# type: ignore`, `#pragma warning disable`, `[SuppressMessage(...)]`, `@SuppressWarnings(...)`. The standard rule (per most CLAUDE.md files): if you touched the file, the underlying smell must be addressed and the annotation removed. If suppressions remain in a touched file, flag as **Major** with "remove suppression and address underlying smell" guidance. Do NOT flag suppressions in untouched files.
+  2. **New warnings introduced**: if the implementer's `IMPL_STATUS.md` reports build/lint output, scan for warning IDs that did not exist in the pre-PR baseline. New warnings on touched code (e.g., obsolete-API warnings like SYSLIB0050, deprecation notices) must be addressed, not shipped. Flag as **Major**.
+  3. **Test seed coherence**: if the diff modifies test seed/fixture data AND new tests reference seeded entities by ID, every seeded entity must set its FK columns explicitly (not rely on navigation properties or implicit resolution by ORM). Implicit FK reliance is fragile — a future ORM upgrade or test-runner change can silently break the test. Flag explicit-FK violations as **Major**.
 
 ## Severity Calibration
 

@@ -127,12 +127,38 @@ Upstream state files (TICKET.md, PLAN.md, IMPL_STATUS.md) already contain detail
 
 Your report covers **testing only**: what tests exist, what was run, what passed/failed, and what regressions were found. Keep E2E_REPORT.md under 150 lines.
 
+## Verdict Discipline (Required Before APPROVED)
+
+Your verdict MUST be derived from raw test runner output, not from your own narrative summarization. The orchestrator will independently re-run your test command and visual-diff the output against your report — if the diff doesn't match, the verdict will be rejected as unverified.
+
+**Mandatory rules before declaring APPROVED:**
+
+1. **Run with a per-test reporter.** Use the framework's equivalent of `--reporter=list` (Playwright) or `--verbose` (Jest) so each test gets its own pass/fail line. A summary-only run does not produce enough evidence.
+
+2. **Default to a single-target scope** unless the ticket explicitly tests cross-platform behavior:
+   - Playwright: `--project=chromium`
+   - Jest: a single env (`--env=jsdom`)
+   - Cypress: a single browser (`--browser=chrome`)
+   Running across 5 browser projects multiplies every failure 5x and obscures real signal.
+
+3. **Paste verbatim terminal output** in `E2E_REPORT.md` under a `## Verbatim Test Output` heading. Include per-test pass/fail markers (`✓` / `✘` / `-` / `SKIP` / etc.) and the final summary line. Narrative paraphrase ("all tests pass") is forbidden — the orchestrator cannot verify a paraphrase.
+
+4. **Skipped tests count as failures.** A `-` or `SKIP` marker is NOT a pass. If a test was skipped due to a fixture failure, document the fixture failure as a test failure. Only justify a skip if it has a documented reason (e.g., conditional on environment, explicit `test.skip` in the spec).
+
+5. **Re-run once before approving.** After a passing run, run the same command a second time and paste the second run's output too (under a `## Repeatability Check` heading). Identical results → APPROVED. Different results → FLAKY → CHANGES_REQUESTED. This catches order-dependent state leaks and timing flakes that a single run hides.
+
+6. **APPROVED is forbidden if any test failed or was skipped** unless you explicitly justify each one and the orchestrator's brief allows it (e.g., infrastructure failures the pipeline cannot fix).
+
+If you cannot satisfy these rules (e.g., the runner can't be configured for per-test output, or a second run is impractical), use a non-APPROVED verdict and explain in the report. Do not approximate or paraphrase your way to APPROVED.
+
 ## Output
 
 Write `{state_directory}/E2E_REPORT.md` with:
 - E2E framework used (or "NO_FRAMEWORK_EXISTS — recommending: {framework}" with reason)
 - Tests written (paths, names, scenarios)
-- Results (pass/fail per test, commands run)
+- **Verbatim Test Output** — pasted from the first run, per-test markers + summary line
+- **Repeatability Check** — pasted from the second run (only required when verdict is APPROVED)
+- Results summary (pass/fail counts, commands run)
 - Failure details with root cause analysis
 - Regressions (if any) with file:line
 
