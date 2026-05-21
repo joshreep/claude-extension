@@ -284,11 +284,17 @@ After writing `agent-state/{ticket}/IMPL_REVIEW.md`, check the verdict:
 
 **Pre-flight server check (Orchestrator):** Before spawning the E2E agent, extract the backend and frontend ports from `project_profile` (Dev Servers section). If the project profile does not list server URLs/ports, **ask the user**: "I need the dev server ports to verify servers are running before E2E tests. What ports are your backend and frontend running on? (or type 'skip' to proceed without the pre-flight check)" WAIT for response. If the user provides ports, use them. If the user types 'skip', proceed directly to launching the E2E agent.
 
-Once ports are known, run:
+Once ports are known, run the script **bare and unconditionally** — no fallbacks, no existence checks, no compound forms:
 
 ```bash
 check-localhost.sh {backend_port} {frontend_port}
 ```
+
+**Permission-friendly invocation rules** (CRITICAL — the user's allowlist contains `Bash(check-localhost.sh *)` so a bare invocation runs without prompting; any deviation from bare form creates a new permission pattern):
+- DO NOT verify the script exists first (`which`, `command -v`, `ls`, `[ -x ... ]`).
+- DO NOT use `||`, `&&`, `;`, redirections, or `$(...)` substitution around the call.
+- DO NOT use a fully-qualified path — keep it bare so the allowlist match holds.
+- If the script truly is missing (exit code 127 / "command not found"), surface it to the user rather than substituting `curl`.
 
 - If the script exits 0 (all reachable): proceed to launch the E2E agent. Include `PRE_FLIGHT_PASSED: true` in the prompt so the agent skips its own server check.
 - If the script exits 1 (one or more unreachable): **USER CHECKPOINT (MANDATORY)**. Parse the JSON output to identify which servers are down. Present the status and startup commands (from the project profile Dev Servers section). Ask: "Type 'ready' when servers are running to retry, or 'skip' to proceed without E2E validation." WAIT for response.

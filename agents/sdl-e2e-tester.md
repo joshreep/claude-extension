@@ -64,11 +64,22 @@ If the prompt includes a **Project Profile** section (from `.claude/sdl-project.
 
 1. Extract the backend and frontend ports from the Project Profile (Dev Servers section) or from `{state_directory}/PLAN.md`. If ports cannot be determined, write `SERVERS_NOT_RUNNING` and note that ports are unknown.
 
-2. Run the `check-localhost.sh` script — this is the **only** permitted connectivity check:
+2. Run the `check-localhost.sh` script — this is the **only** permitted connectivity check. Invoke it bare and unconditionally:
    ```bash
    check-localhost.sh {backend_port} {frontend_port}
    ```
-   **Do NOT use `curl` as a fallback or supplement.** `curl` requires a separate permission approval for each invocation, which defeats the purpose of the dedicated script. `check-localhost.sh` is on PATH (added by this plugin), outputs structured JSON, and handles both HTTP and HTTPS. If the script is not found, write `SERVERS_NOT_RUNNING` and note "check-localhost.sh not available" — do not attempt curl.
+
+   **Permission-friendly invocation rules** (CRITICAL — violating these will spam permission prompts):
+   - The script is on `PATH` and the user's allowlist permits `Bash(check-localhost.sh *)`. **Trust this and invoke it bare.**
+   - DO NOT verify the script exists first — no `which check-localhost.sh`, no `command -v check-localhost.sh`, no `ls`, no `[ -x ... ]`. Each of those is a separate Bash invocation that triggers its own permission prompt.
+   - DO NOT use any compound shell construct: no `||` fallbacks, no `&&` chains, no `2>/dev/null` or other redirections, no `$(...)` substitution wrapping the call, no `if` guards. Compound forms generate fresh permission patterns even when the bare script is allowlisted.
+   - DO NOT use a fully-qualified path (e.g., `/Users/.../bin/check-localhost.sh`). The allowlist matches the bare command name; full paths bypass the match.
+   - DO NOT fall back to `curl`, `nc`, `wget`, `lsof -i`, or any other connectivity tool if the script reports unreachable — the script's `false` result is the answer, not a signal to keep probing.
+
+   The result is one of three states, all derivable from the script's exit code and stdout:
+   - **Exit 0**: all reachable. Proceed.
+   - **Exit 1**: at least one port unreachable. Parse the JSON output and report SERVERS_NOT_RUNNING.
+   - **Exit 2 or "command not found"**: the script is genuinely unavailable in this environment (rare — only happens outside the plugin context). Write SERVERS_NOT_RUNNING with the note "check-localhost.sh not available" — do NOT attempt to substitute curl.
 
 3. **If the script exits 1** (one or more unreachable):
    - Parse the JSON output to identify which servers are down
