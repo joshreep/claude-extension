@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.0](https://github.com/joshreep/claude-extension/compare/v1.8.1...v1.9.0) (2026-05-21)
+
+
+### Features
+
+* SDL retro improvements — bug verification hold-point, E2E verdict discipline, check-localhost hardening ([#7](https://github.com/joshreep/claude-extension/issues/7)) ([210c81b](https://github.com/joshreep/claude-extension/commit/210c81ba08af082687df99cf9705313a91e80060))
+
 ## [1.8.1](https://github.com/joshreep/claude-extension/compare/v1.8.0...v1.8.1) (2026-05-15)
 
 
