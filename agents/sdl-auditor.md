@@ -35,6 +35,9 @@ For each file in the diff, run these checks:
 - Debug logging not appropriate for production
 - Commented-out code blocks
 - Hardcoded secrets, API keys, or credentials
+
+The following three checks also appear in the reviewer, but **are not redundant here** — the reviewer evaluates each round's diff; this scan runs against the final committed state after all rework rounds. A suppression annotation introduced in round 2, or a test seed change added during rework, will not appear in the reviewer's earlier pass. Only the auditor sees the final state.
+
 - **Suppression annotations on touched files** — search each touched file for `// @codescene(disable:...)`, `// eslint-disable`, `// @ts-ignore`, `// @ts-nocheck`, `# pylint: disable=`, `# noqa`, `# type: ignore`, `#pragma warning disable`, `[SuppressMessage(...)]`, `@SuppressWarnings(...)`. If any remain in files that this PR modified, this is a **Major** issue per the standard "fix the underlying smell when you touch the file." The reviewer should have caught these — flag them and the verdict goes to REJECTED unless the suppression is in a section of the file that was genuinely not touched (rare; default to flagging).
 - **New warnings introduced** — compare the final build/lint output against the pre-PR baseline. Any new warning IDs that appear are issues to address before merge. Particularly watch for: obsolete-API warnings (e.g., SYSLIB0050), deprecation notices, nullable-reference warnings on new code, ESLint rules.
 - **Test seed coherence** — if test fixtures/seed data were modified and new tests reference seed rows by ID, every seeded entity should set its FK columns explicitly rather than relying on navigation properties. Flag implicit FK reliance as **Major**.

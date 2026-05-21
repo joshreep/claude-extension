@@ -34,9 +34,11 @@ All state file paths above are relative to `agent-state/{ticket}/`. The orchestr
 - **Phase 0.5** (Bug tickets only): Data verification hold-point — present the architect's diagnostics, wait for the user to run them and paste results, validate against hold criteria
 - **Phase 1b**: Architect plan approval — present the plan, iterate on feedback, wait for explicit approval
 - **Phase 3 loop** (round >= 3): Review escalation — present outstanding issues, wait for user decision
-- **Phase 4 verdict verification** (orchestrator-only, no user input): re-run the E2E test command independently and visual-diff against the agent's verbatim output before trusting an APPROVED verdict
 - **Phase 4 follow-up** (no e2e framework): E2E framework recommendation — wait for user confirmation before installing
 - **Phase 5b**: Audit completion — present summary, wait for user to confirm PR creation
+
+**ORCHESTRATOR VERIFICATION GATES** (no user interaction — run these autonomously before proceeding):
+- **Phase 4 E2E verdict**: Before accepting an APPROVED verdict, run test discovery (`--list` or equivalent) and verify the reported test names and count match what exists in the spec files. Check that the summary line is arithmetically consistent with the per-test markers. Push back to the agent if either check fails — do NOT pass an unverified APPROVED to the auditor.
 
 ---
 
@@ -315,15 +317,24 @@ Extract the `<usage>` block. Measure `agent-state/{ticket}/E2E_REPORT.md` size. 
 
 **Verdict verification (MANDATORY when E2E_REPORT.md verdict is APPROVED):**
 
-The E2E agent has historically misreported APPROVED while tests were failing or skipped. Before trusting an APPROVED verdict, verify it independently:
+The E2E agent has historically misreported APPROVED while tests were failing or skipped. Before trusting an APPROVED verdict, verify it with lightweight discovery — no full re-run needed (avoids browser/display-server dependencies and flakiness):
 
-1. Read `agent-state/{ticket}/E2E_REPORT.md`. Confirm it has a `## Verbatim Test Output` section with per-test pass/fail markers and a summary line. If absent, treat the verdict as unverified — push back to the agent: "E2E_REPORT.md is missing the required Verbatim Test Output section. Re-run with `--reporter=list` (or framework equivalent) and paste the output."
-2. Re-run the exact test command from the report yourself, capturing per-test output. Compare against the agent's pasted output:
-   - **All test result lines match** (count of `✓`/`✘`/`-` markers identical, summary line identical) → verdict is verified, proceed.
-   - **Mismatch** (different counts, different test names, additional failures) → push back to the agent with the actual output: "Your report claimed N passing but the orchestrator's re-run showed M. Reconcile or revise verdict."
-3. If the agent's report includes a `## Repeatability Check` section (second run output), verify the orchestrator's run matches that too. If neither run section exists and verdict is APPROVED, the agent did not follow its own discipline — push back.
+1. Read `agent-state/{ticket}/E2E_REPORT.md`. Confirm it has a `## Verbatim Test Output` section with per-test pass/fail markers and a summary line. If absent, push back: "E2E_REPORT.md is missing the required Verbatim Test Output section. Re-run with `--reporter=list` (or framework equivalent) and paste the output."
 
-This verification is the orchestrator's job, not the user's. Skipping it (e.g., "trust the agent") has produced misleading audit trails in past runs and is forbidden.
+2. Run test discovery to enumerate what specs exist in the repo:
+   - **Playwright**: `npx playwright test --list`
+   - **Jest**: `npx jest --listTests`
+   - **Cypress**: `npx cypress run --spec "**/*.cy.*" --dry-run` (or list spec files via `find`)
+
+   Compare the discovered test names and count against the names and count in the agent's `## Verbatim Test Output`:
+   - **Count and names match** → continue to step 3.
+   - **Agent reported fewer tests than discovery finds** → push back: "Your report covers {N} tests but discovery found {M} specs. Re-run against the full suite or document why the remaining specs were intentionally excluded."
+
+3. Verify the summary line (e.g., `12 passed, 0 failed`) is arithmetically consistent with the per-test markers (`✓`/`✘`/`-`) in the verbatim output. If the counts don't add up, push back: "Summary line says {N} passed but verbatim output shows {M} pass markers. Reconcile."
+
+4. If the agent's report includes a `## Repeatability Check` section, confirm it matches the first run's summary line. If it doesn't, flag as FLAKY and push back.
+
+This verification is the orchestrator's job, not the user's. Skipping it has produced misleading audit trails in past runs and is forbidden.
 
 Once the verdict is verified, read `agent-state/{ticket}/E2E_REPORT.md`:
 - If **NOT_APPLICABLE** (non-application changes only) → note "E2E tests not applicable (non-application changes)" and proceed to Step 7.
