@@ -50,6 +50,24 @@ Before drafting the plan, check whether `{state_directory}/TICKET.md` begins wit
 
 If TICKET.md does not contain a `## Current Defect` section, skip this check.
 
+## Bug-Fix Data Verification Hold-Point (REQUIRED for Bug tickets)
+
+If the ticket type is **Bug** (or **Defect**), and your root-cause analysis is a hypothesis ("I believe the bug is caused by X because Y"), the plan MUST open with a **Phase 0: Verification** section before any code-change phases. The reason: bug-fix code that "looks right" can pass review and tests and still ship the wrong fix if the hypothesis was wrong about how the system actually behaves in production.
+
+The Phase 0 section must include:
+
+1. **A short statement of the hypothesis**: one paragraph explaining what you believe the bug is and why.
+2. **Concrete diagnostics for the user to run**: typically a SQL query, a log query, a curl/HTTP request, or a one-off script. Each diagnostic must include:
+   - **Exact, copy-pasteable code** with parameter values filled in (e.g., `WHERE Name LIKE '%KCBI%'`, not `WHERE Name = ?`)
+   - **What it answers**: e.g., "Diagnostic 1 lists every active row for the affected client, grouped by the field the predicate compares on, so we can visually confirm the same-field-different-FK pattern exists."
+   - **Pass/fail criteria for the hypothesis**: e.g., "Hypothesis confirmed if D1 returns ≥1 row matching X. Refuted if D1 returns 0 rows."
+3. **An explicit hold criterion at the end**: e.g., "Proceed to Phase 1 ONLY if Diagnostic 2 returns ≥1 row matching X AND Diagnostic 3 returns 0 rows. If either fails, the plan must be revised before any code is written."
+4. **A pre-flight diagnostic for any DB schema change you are planning** (e.g., new unique index, new NOT NULL column): a query that returns the rows that would block the change. The migration plan should reference this diagnostic.
+
+If you cannot produce concrete diagnostics (e.g., the bug is purely client-side with no DB or backend log involvement), explicitly note "no Phase 0 diagnostic possible — this is a UI-only bug reproducible locally" and explain what the developer should reproduce instead. Do NOT skip the section silently.
+
+For non-Bug tickets (PBI, Task, Feature, Spike), this section is not required.
+
 ## Step 3 — Analyze existing state against acceptance criteria
 
 Before planning new work, check which ACs are **already satisfied** by the current codebase. For each AC in the ticket:

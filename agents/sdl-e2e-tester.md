@@ -64,11 +64,22 @@ If the prompt includes a **Project Profile** section (from `.claude/sdl-project.
 
 1. Extract the backend and frontend ports from the Project Profile (Dev Servers section) or from `{state_directory}/PLAN.md`. If ports cannot be determined, write `SERVERS_NOT_RUNNING` and note that ports are unknown.
 
-2. Run the `check-localhost.sh` script — this is the **only** permitted connectivity check:
+2. Run the `check-localhost.sh` script — this is the **only** permitted connectivity check. Invoke it bare and unconditionally:
    ```bash
    check-localhost.sh {backend_port} {frontend_port}
    ```
-   **Do NOT use `curl` as a fallback or supplement.** `curl` requires a separate permission approval for each invocation, which defeats the purpose of the dedicated script. `check-localhost.sh` is on PATH (added by this plugin), outputs structured JSON, and handles both HTTP and HTTPS. If the script is not found, write `SERVERS_NOT_RUNNING` and note "check-localhost.sh not available" — do not attempt curl.
+
+   **Permission-friendly invocation rules** (CRITICAL — violating these will spam permission prompts):
+   - The script is on `PATH` and the user's allowlist permits `Bash(check-localhost.sh *)`. **Trust this and invoke it bare.**
+   - DO NOT verify the script exists first — no `which check-localhost.sh`, no `command -v check-localhost.sh`, no `ls`, no `[ -x ... ]`. Each of those is a separate Bash invocation that triggers its own permission prompt.
+   - DO NOT use any compound shell construct: no `||` fallbacks, no `&&` chains, no `2>/dev/null` or other redirections, no `$(...)` substitution wrapping the call, no `if` guards. Compound forms generate fresh permission patterns even when the bare script is allowlisted.
+   - DO NOT use a fully-qualified path (e.g., `/Users/.../bin/check-localhost.sh`). The allowlist matches the bare command name; full paths bypass the match.
+   - DO NOT fall back to `curl`, `nc`, `wget`, `lsof -i`, or any other connectivity tool if the script reports unreachable — the script's `false` result is the answer, not a signal to keep probing.
+
+   The result is one of three states, all derivable from the script's exit code and stdout:
+   - **Exit 0**: all reachable. Proceed.
+   - **Exit 1**: at least one port unreachable. Parse the JSON output and report SERVERS_NOT_RUNNING.
+   - **Exit 2 or "command not found"**: the script is genuinely unavailable in this environment (rare — only happens outside the plugin context). Write SERVERS_NOT_RUNNING with the note "check-localhost.sh not available" — do NOT attempt to substitute curl.
 
 3. **If the script exits 1** (one or more unreachable):
    - Parse the JSON output to identify which servers are down
@@ -127,12 +138,38 @@ Upstream state files (TICKET.md, PLAN.md, IMPL_STATUS.md) already contain detail
 
 Your report covers **testing only**: what tests exist, what was run, what passed/failed, and what regressions were found. Keep E2E_REPORT.md under 150 lines.
 
+## Verdict Discipline (Required Before APPROVED)
+
+Your verdict MUST be derived from raw test runner output, not from your own narrative summarization. The orchestrator will independently re-run your test command and visual-diff the output against your report — if the diff doesn't match, the verdict will be rejected as unverified.
+
+**Mandatory rules before declaring APPROVED:**
+
+1. **Run with a per-test reporter.** Use the framework's equivalent of `--reporter=list` (Playwright) or `--verbose` (Jest) so each test gets its own pass/fail line. A summary-only run does not produce enough evidence.
+
+2. **Default to a single-target scope** unless the ticket explicitly tests cross-platform behavior:
+   - Playwright: `--project=chromium`
+   - Jest: a single env (`--env=jsdom`)
+   - Cypress: a single browser (`--browser=chrome`)
+   Running across 5 browser projects multiplies every failure 5x and obscures real signal.
+
+3. **Paste verbatim terminal output** in `E2E_REPORT.md` under a `## Verbatim Test Output` heading. Include per-test pass/fail markers (`✓` / `✘` / `-` / `SKIP` / etc.) and the final summary line. Narrative paraphrase ("all tests pass") is forbidden — the orchestrator cannot verify a paraphrase.
+
+4. **Skipped tests count as failures.** A `-` or `SKIP` marker is NOT a pass. If a test was skipped due to a fixture failure, document the fixture failure as a test failure. Only justify a skip if it has a documented reason (e.g., conditional on environment, explicit `test.skip` in the spec).
+
+5. **Re-run once before approving.** After a passing run, run the same command a second time and paste the second run's output too (under a `## Repeatability Check` heading). Identical results → APPROVED. Different results → FLAKY → CHANGES_REQUESTED. This catches order-dependent state leaks and timing flakes that a single run hides.
+
+6. **APPROVED is forbidden if any test failed or was skipped** unless you explicitly justify each one and the orchestrator's brief allows it (e.g., infrastructure failures the pipeline cannot fix).
+
+If you cannot satisfy these rules (e.g., the runner can't be configured for per-test output, or a second run is impractical), use a non-APPROVED verdict and explain in the report. Do not approximate or paraphrase your way to APPROVED.
+
 ## Output
 
 Write `{state_directory}/E2E_REPORT.md` with:
 - E2E framework used (or "NO_FRAMEWORK_EXISTS — recommending: {framework}" with reason)
 - Tests written (paths, names, scenarios)
-- Results (pass/fail per test, commands run)
+- **Verbatim Test Output** — pasted from the first run, per-test markers + summary line
+- **Repeatability Check** — pasted from the second run (only required when verdict is APPROVED)
+- Results summary (pass/fail counts, commands run)
 - Failure details with root cause analysis
 - Regressions (if any) with file:line
 
