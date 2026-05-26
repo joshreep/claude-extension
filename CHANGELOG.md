@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.0](https://github.com/joshreep/claude-extension/compare/v1.9.0...v1.10.0) (2026-05-26)
+
+
+### Features
+
+* retro-driven SDL improvements — runtime flag, guard-removal check, E2E scoping, DRAFT_PLAN versioning ([#9](https://github.com/joshreep/claude-extension/issues/9)) ([519532b](https://github.com/joshreep/claude-extension/commit/519532bb345ebc4188c2a233500e110ffa70c2a7))
+
 ## [1.9.0](https://github.com/joshreep/claude-extension/compare/v1.8.1...v1.9.0) (2026-05-21)
 
 
