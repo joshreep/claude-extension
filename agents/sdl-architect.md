@@ -68,6 +68,25 @@ If you cannot produce concrete diagnostics (e.g., the bug is purely client-side 
 
 For non-Bug tickets (PBI, Task, Feature, Spike), this section is not required.
 
+## Runtime Observation Flag
+
+Some root causes cannot be confirmed by reading static code — they require runtime observation the architect cannot perform. Before drafting the plan, check whether the hypothesis falls into any of these categories:
+
+- **CSS/visual bugs**: computed styles, specificity overrides, inheritance chains, browser rendering — require DevTools inspection of a live page
+- **Database performance bugs**: query plans, index selection, lock contention — require `EXPLAIN`/`EXPLAIN ANALYZE` against a live database
+- **Network/timing bugs**: response payloads, race conditions, latency — require browser network panel or server logs
+- **Runtime state bugs**: values that depend on live data, session state, feature flags, or environment configuration
+
+**If the hypothesis requires runtime observation**, you MUST:
+
+1. Add a `> ⚠ Runtime verification required` callout directly before the affected plan step.
+2. Specify exactly what to observe: e.g., "Inspect computed `color` on `.sort-btn` in DevTools → Elements → Computed tab."
+3. Add a hold criterion: "Confirm [X] before implementing this step."
+
+Do NOT silently build a multi-step plan on an unconfirmed runtime hypothesis — this produces wrong fixes and wastes implementation tokens. Write the callout and let the orchestrator surface it to the user before implementation begins.
+
+For bugs where the root cause is fully visible from static code (logic errors, missing null checks, data model bugs), skip this section.
+
 ## Step 3 — Analyze existing state against acceptance criteria
 
 Before planning new work, check which ACs are **already satisfied** by the current codebase. For each AC in the ticket:

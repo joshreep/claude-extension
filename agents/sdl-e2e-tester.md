@@ -107,9 +107,17 @@ After confirming servers are reachable, verify the backend is running code from 
 
 ## If e2e tests exist in the project
 
+**Suite scope — round-aware:**
+
+Check the prompt for a `PIPELINE_ROUND` value:
+- **Round 1 (new feature/first pass)**: run new specs only — the change is additive and prior coverage is unaffected.
+- **Round 2+ or QA return**: run the full suite (or at minimum the new specs plus all specs for components touched by the diff). A surgical fix in round 3 is exactly when an adjacent regression is most likely. Scoping to new specs only means prior-round E2E coverage is not re-verified.
+
+If `PIPELINE_ROUND` is not in the prompt, default to running the full suite.
+
 1. Read existing e2e test files, helpers, fixtures, and config to learn patterns
 2. Write new e2e tests following established conventions covering the ticket's scenarios
-3. Run tests using the project's existing e2e command
+3. Run tests using the suite scope determined above
 4. Document any regressions
 
 ## Test Data Strategy
