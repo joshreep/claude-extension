@@ -170,7 +170,11 @@ If `project_profile` is **empty**, launch `joshreep-tools:sdl-architect` with pr
 
 > **State directory**: `agent-state/{ticket}/`
 
-Write the returned content to `agent-state/{ticket}/DRAFT_PLAN.md`. Extract the `<usage>` block. Measure `agent-state/{ticket}/DRAFT_PLAN.md` size. Update `agent-state/{ticket}/TOKEN_USAGE.md` with the Phase 1a row.
+Write the returned content to `agent-state/{ticket}/DRAFT_PLAN.md` as follows:
+- **First run** (file does not exist): write the content directly.
+- **Subsequent runs** (file already exists — architect was re-run due to feedback or a wrong hypothesis): do NOT overwrite. Append a `## Revision — Round {N}` section at the end of the existing file, where N is the revision count (starting at 2). This preserves the evolution of the plan for audit purposes — a discarded wrong-hypothesis plan section is part of the diagnostic record.
+
+Extract the `<usage>` block. Measure `agent-state/{ticket}/DRAFT_PLAN.md` size. Update `agent-state/{ticket}/TOKEN_USAGE.md` with the Phase 1a row.
 
 ### Step 3.5 — Bug-Fix Data Verification Hold-Point (Orchestrator — MANDATORY FOR BUG TICKETS)
 
@@ -205,6 +209,27 @@ For Bug tickets, the architect's plan MUST include a `## Phase 0: Verification` 
 5. If the user picks **(c)**: stop the pipeline.
 
 The hold-point is mandatory for Bug tickets specifically because past pipeline runs without it have shipped fixes based on theory that turned out to address a non-existent state. Five minutes of diagnostic time prevents one bad PR.
+
+### Step 3.7 — Runtime Observation Checkpoint (Orchestrator — CONDITIONAL CHECKPOINT)
+
+After writing `DRAFT_PLAN.md`, scan it for any `⚠ Runtime verification required` callouts added by the architect. These indicate the architect's root-cause hypothesis cannot be confirmed from static code alone.
+
+If any callouts are present: **STOP HERE.** Present them to the user:
+
+> "Before we commit to this plan, the architect flagged the following steps as requiring runtime verification — the root cause can't be confirmed from code alone:
+>
+> [paste each callout verbatim]
+>
+> Please verify these in your environment (DevTools / database / logs as indicated) and confirm the findings. You can:
+> **(a)** Paste your findings here — I'll incorporate them and proceed to plan approval
+> **(b)** The plan looks right based on your knowledge — proceed without verification (document the assumption)
+> **(c)** The hypothesis is wrong — describe what you found and I'll send the architect back to revise"
+
+- If **(a)**: incorporate the user's findings as a note in `DRAFT_PLAN.md` under each affected step, then proceed to Step 4.
+- If **(b)**: record the assumption inline in `DRAFT_PLAN.md` and proceed to Step 4.
+- If **(c)**: re-run the architect with the user's findings appended to the prompt as correction context.
+
+If no callouts are present, skip this checkpoint and proceed directly to Step 4.
 
 ### Step 4 — Phase 1b: Plan Approval (Orchestrator — USER CHECKPOINT)
 
@@ -307,6 +332,7 @@ Once servers are confirmed running, launch `joshreep-tools:sdl-e2e-tester` with 
 
 > **Ticket number**: {ticket}
 > **State directory**: `agent-state/{ticket}/`
+> **PIPELINE_ROUND**: {round}
 >
 > **Code Standards (from CLAUDE.md — these override any conflicting instructions):**
 > {code_standards}
