@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.0](https://github.com/joshreep/claude-extension/compare/v1.10.0...v1.11.0) (2026-05-27)
+
+
+### Features
+
+* address-pr-feedback skill, runtime observation flag, guard-removal check, E2E scoping ([#11](https://github.com/joshreep/claude-extension/issues/11)) ([02f0cd5](https://github.com/joshreep/claude-extension/commit/02f0cd557693ee7d5a994e358aff35d708edf94a))
+
 ## [1.10.0](https://github.com/joshreep/claude-extension/compare/v1.9.0...v1.10.0) (2026-05-26)
 
 
