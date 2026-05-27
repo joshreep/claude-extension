@@ -18,6 +18,7 @@ This is a Claude Code plugin (`joshreep-tools`) that packages reusable slash com
   - `review/` — composite review: ticket context + PR feedback + code review in one pass
   - `demo-plan/` — sprint demo plan generator from ADO board columns
   - `sdl-retro/` — retrospective analysis of SDL pipeline runs
+  - `address-pr-feedback/` — triage PR review comments: propose a fix or explain why no change is needed
 - `agents/` — reusable agent definitions (markdown with YAML frontmatter)
   - `sdl-ticket-fetcher.md` — ADO work item fetching (shared by SDL pipeline, ticket skill, and review skill)
   - `sdl-architect.md` — Phase 1a: project discovery and plan drafting
